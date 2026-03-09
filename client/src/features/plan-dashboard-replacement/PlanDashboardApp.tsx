@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo, KeyboardEvent, MouseEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo, KeyboardEvent, MouseEvent, useDeferredValue, startTransition } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { Bell, CircleHelp, Menu, Moon, Settings, Sun } from 'lucide-react';
+import { Bell, CircleHelp, Menu, Moon, Settings, Sun, X } from 'lucide-react';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -383,7 +383,7 @@ const NotificationItem = memo(({ item, isRemoved, onToggleRemove }: { item: Noti
         onClick={() => onToggleRemove(item.id, true)}
         title="Excluir notificação"
       >
-        ×
+        <X size={16} />
       </button>
     </div>
   );
@@ -394,7 +394,7 @@ const NotificationPanel = memo(({ notifications, onClose, removedNotifs, onToggl
     <div className="overlay-panel" onClick={e => e.stopPropagation()} style={{ width: 380 }}>
       <div className="overlay-header">
         <h3>Notificações</h3>
-        <button className="overlay-close" onClick={onClose}>×</button>
+        <button className="overlay-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
       </div>
       <div className="overlay-body">
         {notifications.length > 0 ? notifications.map(n => <NotificationItem key={n.id} item={n} isRemoved={removedNotifs.has(n.id)} onToggleRemove={onToggleRemove} />) : <div className="notif-item"><strong>Sem notificaÃ§Ãµes novas.</strong></div>}
@@ -406,7 +406,7 @@ const NotificationPanel = memo(({ notifications, onClose, removedNotifs, onToggl
 const SettingsPanel = memo(({ onClose, theme, setTheme, lang, setLang }: { onClose: () => void; theme: Theme; setTheme: (t: Theme) => void; lang: Lang; setLang: (l: Lang) => void }) => (
   <div className="overlay-backdrop" onClick={onClose}>
     <div className="overlay-panel" onClick={e => e.stopPropagation()} style={{ width: 360 }}>
-      <div className="overlay-header"><h3>Configurações</h3><button className="overlay-close" onClick={onClose}>×</button></div>
+      <div className="overlay-header"><h3>Configurações</h3><button className="overlay-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
       <div className="overlay-body">
         <div className="settings-group"><label>Tema</label><div className="selector-row"><button className={`selector-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>Escuro</button><button className={`selector-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>Claro</button></div></div>
         <div className="settings-group"><label>Idioma</label><div className="selector-row">{(['PT', 'EN', 'ES'] as Lang[]).map(l => <button key={l} className={`selector-btn ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>{l}</button>)}</div></div>
@@ -420,7 +420,7 @@ const SettingsPanel = memo(({ onClose, theme, setTheme, lang, setLang }: { onClo
 const HelpPanel = memo(({ onClose }: { onClose: () => void }) => (
   <div className="overlay-backdrop" onClick={onClose}>
     <div className="overlay-panel" onClick={e => e.stopPropagation()} style={{ width: 420 }}>
-      <div className="overlay-header"><h3>Central de Ajuda</h3><button className="overlay-close" onClick={onClose}>×</button></div>
+      <div className="overlay-header"><h3>Central de Ajuda</h3><button className="overlay-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
       <div className="overlay-body">
         <div className="help-section"><h4>Filtros</h4><p>Use os filtros globais para segmentar KPIs e gráficos por período, canal, profissional, procedimento, unidade ou severidade.</p></div>
         <div className="help-section"><h4>Drill-Down</h4><p>Clique em qualquer barra ou segmento nos gráficos para filtrar automaticamente. Um segundo clique desfaz o filtro.</p></div>
@@ -444,7 +444,7 @@ const KpiExplainPanel = memo(({ meta, onClose }: { meta: KpiMeta; onClose: () =>
           <CircleHelp size={18} />
           <h3>{meta.label}</h3>
         </div>
-        <button className="overlay-close" onClick={onClose}>×</button>
+        <button className="overlay-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
       </div>
       <div className="overlay-body">
         <div className="kpi-explain-section">
@@ -477,7 +477,7 @@ const KpiExplainPanel = memo(({ meta, onClose }: { meta: KpiMeta; onClose: () =>
 const SettingsPanelWithNotifications = memo(({ onClose, theme, setTheme, lang, setLang, notificationMode, setNotificationMode }: { onClose: () => void; theme: Theme; setTheme: (t: Theme) => void; lang: Lang; setLang: (l: Lang) => void; notificationMode: NotificationMode; setNotificationMode: (mode: NotificationMode) => void }) => (
   <div className="overlay-backdrop" onClick={onClose}>
     <div className="overlay-panel" onClick={e => e.stopPropagation()} style={{ width: 360 }}>
-      <div className="overlay-header"><h3>ConfiguraÃ§Ãµes</h3><button className="overlay-close" onClick={onClose}>Ã—</button></div>
+      <div className="overlay-header"><h3>ConfiguraÃ§Ãµes</h3><button className="overlay-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
       <div className="overlay-body">
         <div className="settings-group"><label>Tema</label><div className="selector-row"><button className={`selector-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>Escuro</button><button className={`selector-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>Claro</button></div></div>
         <div className="settings-group"><label>Idioma</label><div className="selector-row">{(['PT', 'EN', 'ES'] as Lang[]).map(l => <button key={l} className={`selector-btn ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>{l}</button>)}</div></div>
@@ -506,7 +506,11 @@ function PlanDashboardApp() {
   const userPlan = toDashboardPlan((user as any)?.plan);
   const [activePlan, setActivePlan] = useState<Plan>(userPlan);
   const [activeMenuItem, setActiveMenuItem] = useState(0);
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return window.localStorage.getItem('glx-dashboard-theme') === 'light' ? 'light' : 'dark';
+  });
+  const deferredTheme = useDeferredValue(theme);
   const [lang, setLang] = useState<Lang>(() => toDashboardLang(language));
   const [notificationMode, setNotificationMode] = useState<NotificationMode>(() => {
     if (typeof window === 'undefined') return 'all';
@@ -525,6 +529,7 @@ function PlanDashboardApp() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedKpiMeta, setSelectedKpiMeta] = useState<KpiMeta | null>(null);
   const contentRef = useRef<HTMLElement>(null);
+  const appRootRef = useRef<HTMLDivElement>(null);
   const exportContentRef = useRef<HTMLDivElement>(null);
   const previousAlertsRef = useRef<Map<string, number>>(new Map());
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -617,6 +622,10 @@ function PlanDashboardApp() {
   }, [notificationMode]);
 
   useEffect(() => {
+    appRootRef.current?.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
     setActivePlan(prev => (prev === userPlan ? prev : userPlan));
     setActiveMenuItem(0);
     setFilters(defaultFilters);
@@ -695,6 +704,17 @@ function PlanDashboardApp() {
     setLang(next);
     setLanguage(toAppLanguage(next));
   }, [setLanguage]);
+
+  const handleSetTheme = useCallback((next: Theme) => {
+    if (next === theme) return;
+    appRootRef.current?.setAttribute('data-theme', next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('glx-dashboard-theme', next);
+    }
+    startTransition(() => {
+      setTheme(next);
+    });
+  }, [theme]);
 
   const handleRefresh = useCallback(() => {
     setRefreshKey(k => k + 1);
@@ -890,7 +910,7 @@ function PlanDashboardApp() {
   }
 
   return (
-    <div className="glx-plan-dashboard-root app-shell" data-theme={theme} data-lang={language}>
+    <div ref={appRootRef} className="glx-plan-dashboard-root app-shell" data-theme={theme} data-lang={language}>
       <div className="dashboard-ambient" aria-hidden="true">
         <span className="ambient-grid" />
         <span className="ambient-orb ambient-orb-a" />
@@ -899,7 +919,7 @@ function PlanDashboardApp() {
       </div>
       {mobileSidebarOpen && <button type="button" className="sidebar-backdrop" aria-label={translateText('Fechar menu')} onClick={() => setMobileSidebarOpen(false)} />}
       {showNotifications && <NotificationPanel notifications={visibleNotifications} onClose={() => setShowNotifications(false)} removedNotifs={removedNotifs} onToggleRemove={handleToggleNotif} />}
-      {showSettings && <SettingsPanelWithNotifications onClose={() => setShowSettings(false)} theme={theme} setTheme={setTheme} lang={lang} setLang={handleSetLang} notificationMode={notificationMode} setNotificationMode={setNotificationMode} />}
+      {showSettings && <SettingsPanelWithNotifications onClose={() => setShowSettings(false)} theme={theme} setTheme={handleSetTheme} lang={lang} setLang={handleSetLang} notificationMode={notificationMode} setNotificationMode={setNotificationMode} />}
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
       {translatedKpiMeta && <KpiExplainPanel meta={translatedKpiMeta} onClose={() => setSelectedKpiMeta(null)} />}
       {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg('')} />}
@@ -928,7 +948,7 @@ function PlanDashboardApp() {
           </div>
           <div style={{ marginTop: 12 }}>
             <div className="selector-row-label">{translateText('Tema').toUpperCase()}</div>
-            <div className="theme-toggle-wrapper" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ cursor: 'pointer' }}>
+            <div className="theme-toggle-wrapper" onClick={() => handleSetTheme(theme === 'dark' ? 'light' : 'dark')} style={{ cursor: 'pointer' }}>
               <span className="theme-toggle-icon" aria-hidden="true">
                 {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
               </span>
@@ -1035,9 +1055,9 @@ function PlanDashboardApp() {
           </div>
         )}
         <main className="content" ref={contentRef} key={refreshKey} onClickCapture={handleKpiInteraction} onKeyDownCapture={handleKpiInteraction}>
-          {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
-          {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
-          {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={activeMenuItem} theme={theme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
         </main>
 
         {/* Hidden Container for Multi-Tab Export */}
