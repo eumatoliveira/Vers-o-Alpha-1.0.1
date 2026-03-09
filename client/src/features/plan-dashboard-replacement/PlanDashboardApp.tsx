@@ -767,143 +767,98 @@ function PlanDashboardApp() {
     setPdfExportMode(mode);
     setToastMsg(mode === "investor" ? translateText('Gerando PDF investidor...') : t.pdfGenerating);
 
-    setTimeout(async () => {
-      try {
-        const exportNode =
-          mode === "executive"
-            ? exportContentRef.current ?? contentRef.current
-            : contentRef.current;
+    try {
+      const exportNode =
+        mode === "executive"
+          ? exportContentRef.current ?? contentRef.current
+          : contentRef.current;
 
-        if (!exportNode) throw new Error("Export ref missing");
+      if (!exportNode) throw new Error("Export ref missing");
 
-        const dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-        const executiveFilePrefix = `glx_${activePlan.toLowerCase()}_${lang.toLowerCase()}_${currency.toLowerCase()}_executive`;
+      if (mode === "executive") {
+        const response = await fetch("/api/export/pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            clinicName: profileName,
+            plan: activePlan.toLowerCase(),
+            language: lang,
+            currency,
+            filters,
+            appointments: resolvedAppointments,
+          }),
+        });
 
-        if (mode === "executive") {
-          const response = await fetch("/api/export/pdf", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              clinicName: profileName,
-              plan: activePlan.toLowerCase(),
-              language: lang,
-              currency,
-              filters,
-              appointments: resolvedAppointments,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(await response.text());
-          }
-
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const anchor = document.createElement("a");
-          anchor.href = url;
-          anchor.download = `${executiveFilePrefix}_visual_${dateSuffix}.pdf`;
-          document.body.appendChild(anchor);
-          anchor.click();
-          window.setTimeout(() => {
-            URL.revokeObjectURL(url);
-            anchor.remove();
-          }, 1000);
-
-          await exportDashboardPDF(
-            exportNode,
-            t[titleKey],
-            t[subtitleKey],
-            executiveFilePrefix,
-            pdfLabelsByLang[lang],
-            exportLocaleByLang[lang],
-          );
-
-          await exportDashboardHealthPDF(
-            exportNode,
-            `${t[titleKey]} - ${translateText('Health Summary')}`,
-            translateText('Graficos, resumo de saude e metodologia de medicao'),
-            `${executiveFilePrefix}_graficos`,
-            {
-              ...pdfLabelsByLang[lang],
-              statusSummary: translateText('Resumo de saude'),
-              healthy: translateText('Saudavel'),
-              stable: translateText('Estavel'),
-              critical: translateText('Critico'),
-              legend: translateText('Legenda'),
-              legendHealthy: translateText('Saudavel: indicador dentro da meta ou com status OK.'),
-              legendStable: translateText('Estavel: indicador em atencao, warning, P2 ou P3, sem ruptura imediata.'),
-              legendCritical: translateText('Critico: indicador com status P1 ou critico, exigindo acao imediata.'),
-              methodology: translateText('Metodologia e calculos'),
-              formula: translateText('Formula'),
-              howMeasured: translateText('Como a medicao e feita'),
-              sources: translateText('Fontes e campos usados'),
-              chartGallery: translateText('Graficos executivos'),
-              snapshot: translateText('Snapshot consolidado'),
-            },
-            exportLocaleByLang[lang],
-            kpiSourceMode,
-          );
-
-          setToastMsg(translateText('PDF visual, PDF executivo e PDF de graficos gerados com sucesso!'));
-          return;
+        if (!response.ok) {
+          throw new Error(await response.text());
         }
 
-        const pdfTitle = mode === "investor" ? `${t[titleKey]} - ${translateText('Investor View')}` : t[titleKey];
-        const pdfSubtitle = mode === "investor"
-          ? translateText('LGPD-safe | Investor packet')
-          : t[subtitleKey];
-        const filePrefix = mode === "investor"
-          ? `glx_investor_${activePlan.toLowerCase()}_${lang.toLowerCase()}_${currency.toLowerCase()}`
-          : executiveFilePrefix;
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const filenameFromHeader = response.headers
+          .get("Content-Disposition")
+          ?.match(/filename=\"?([^\";]+)\"?/)?.[1];
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filenameFromHeader || `glx_${activePlan.toLowerCase()}_executive.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        window.setTimeout(() => {
+          URL.revokeObjectURL(url);
+          anchor.remove();
+        }, 1000);
 
-        await exportDashboardPDF(
-          exportNode,
-          pdfTitle,
-          pdfSubtitle,
-          filePrefix,
-          pdfLabelsByLang[lang],
-          exportLocaleByLang[lang],
-        );
-
-        await exportDashboardHealthPDF(
-          exportNode,
-          `${pdfTitle} - ${translateText('Health Summary')}`,
-          translateText('Graficos, resumo de saude e metodologia de medicao'),
-          `${filePrefix}_health`,
-          {
-            ...pdfLabelsByLang[lang],
-            statusSummary: translateText('Resumo de saude'),
-            healthy: translateText('Saudavel'),
-            stable: translateText('Estavel'),
-            critical: translateText('Critico'),
-            legend: translateText('Legenda'),
-            legendHealthy: translateText('Saudavel: indicador dentro da meta ou com status OK.'),
-            legendStable: translateText('Estavel: indicador em atencao, warning, P2 ou P3, sem ruptura imediata.'),
-            legendCritical: translateText('Critico: indicador com status P1 ou critico, exigindo acao imediata.'),
-            methodology: translateText('Metodologia e calculos'),
-            formula: translateText('Formula'),
-            howMeasured: translateText('Como a medicao e feita'),
-            sources: translateText('Fontes e campos usados'),
-            chartGallery: translateText('Graficos executivos'),
-            snapshot: translateText('Snapshot consolidado'),
-          },
-          exportLocaleByLang[lang],
-          kpiSourceMode,
-        );
-
-        setToastMsg(
-          mode === "investor"
-            ? translateText('PDF investidor gerado com sucesso!')
-            : translateText('Dois PDFs gerados com sucesso!'),
-        );
-      } catch (err) {
-        console.error('PDF export error:', err);
-        setToastMsg(translateText('Erro na engine de PDF.'));
-      } finally {
-        setPdfExportMode(null);
+        setToastMsg(translateText('PDF executivo gerado com sucesso!'));
+        return;
       }
-    }, mode === "investor" ? 150 : 500);
+
+      const pdfTitle = `${t[titleKey]} - ${translateText('Investor View')}`;
+      const pdfSubtitle = translateText('LGPD-safe | Investor packet');
+      const filePrefix = `glx_investor_${activePlan.toLowerCase()}_${lang.toLowerCase()}_${currency.toLowerCase()}`;
+
+      await exportDashboardPDF(
+        exportNode,
+        pdfTitle,
+        pdfSubtitle,
+        filePrefix,
+        pdfLabelsByLang[lang],
+        exportLocaleByLang[lang],
+      );
+
+      await exportDashboardHealthPDF(
+        exportNode,
+        `${pdfTitle} - ${translateText('Health Summary')}`,
+        translateText('Graficos, resumo de saude e metodologia de medicao'),
+        `${filePrefix}_health`,
+        {
+          ...pdfLabelsByLang[lang],
+          statusSummary: translateText('Resumo de saude'),
+          healthy: translateText('Saudavel'),
+          stable: translateText('Estavel'),
+          critical: translateText('Critico'),
+          legend: translateText('Legenda'),
+          legendHealthy: translateText('Saudavel: indicador dentro da meta ou com status OK.'),
+          legendStable: translateText('Estavel: indicador em atencao, warning, P2 ou P3, sem ruptura imediata.'),
+          legendCritical: translateText('Critico: indicador com status P1 ou critico, exigindo acao imediata.'),
+          methodology: translateText('Metodologia e calculos'),
+          formula: translateText('Formula'),
+          howMeasured: translateText('Como a medicao e feita'),
+          sources: translateText('Fontes e campos usados'),
+          chartGallery: translateText('Graficos executivos'),
+          snapshot: translateText('Snapshot consolidado'),
+        },
+        exportLocaleByLang[lang],
+        kpiSourceMode,
+      );
+
+      setToastMsg(translateText('PDF investidor gerado com sucesso!'));
+    } catch (err) {
+      console.error('PDF export error:', err);
+      setToastMsg(translateText('Erro na engine de PDF.'));
+    } finally {
+      setPdfExportMode(null);
+    }
   }, [activePlan, currency, filters, kpiSourceMode, lang, pdfLoading, profileName, resolvedAppointments, t, titleKey, subtitleKey, translateText]);
 
   const openKpiMeta = useCallback((label: string | null | undefined) => {
