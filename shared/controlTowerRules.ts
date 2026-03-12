@@ -794,6 +794,15 @@ export function calcFaturamentoLiquido(receitaBruta: number, cancelamentos: numb
   return receitaBruta - cancelamentos - inadimplencia;
 }
 
+export function calcReceitaLiquida(
+  receitaBruta: number,
+  cancelamentos: number,
+  inadimplencia: number,
+  estornos: number,
+): number {
+  return receitaBruta - cancelamentos - inadimplencia - estornos;
+}
+
 export function calcEbitdaNormalizada(lucroOperacional: number, depreciacao: number, ajustesProLabore: number): number {
   return lucroOperacional + depreciacao + ajustesProLabore;
 }
@@ -802,8 +811,46 @@ export function calcRevPas(receitaTotal: number, slotsDisponiveis: number): numb
   return safeDivide(receitaTotal, slotsDisponiveis);
 }
 
-export function calcBreakEven(custosFixos: number, ticketMedio: number): number {
-  return safeDivide(custosFixos, ticketMedio);
+export function calcBreakEven(custosFixos: number, ticketMedio: number, margemContribuicaoPercent = 100): number {
+  const margemContribuicaoFracao = safeDivide(margemContribuicaoPercent, 100);
+  const margemContribuicaoPorAtendimento = ticketMedio * margemContribuicaoFracao;
+  return safeDivide(custosFixos, margemContribuicaoPorAtendimento);
+}
+
+export function calcTaxaOcupacao(realizadas: number, capacidadeDisponivel: number): number {
+  return safeDivide(realizadas, capacidadeDisponivel) * 100;
+}
+
+export function calcTaxaConfirmacoes(confirmados: number, totalAgendados: number): number {
+  return safeDivide(confirmados, totalAgendados) * 100;
+}
+
+export function calcPerdaCapacidadeNaoRecuperavel(noShows: number, cancelamentos24h: number, totalAgendados: number): number {
+  return safeDivide(noShows + cancelamentos24h, totalAgendados) * 100;
+}
+
+export function calcCustoEstimadoNoShow(numeroNoShows: number, ticketMedioPeriodo: number): number {
+  return numeroNoShows * ticketMedioPeriodo;
+}
+
+export function calcLeadTimeDias(totalDias: number, quantidadeLeadsConfirmados: number): number {
+  return safeDivide(totalDias, quantidadeLeadsConfirmados);
+}
+
+export function calcInadimplenciaRate(valoresNaoPagos: number, faturado: number): number {
+  return safeDivide(valoresNaoPagos, faturado) * 100;
+}
+
+export function calcDespesasFixasReceita(despesasFixas: number, receitaLiquida: number): number {
+  return safeDivide(despesasFixas, receitaLiquida) * 100;
+}
+
+export function calcRoi(receitaAtribuida: number, investimento: number): number {
+  return safeDivide(receitaAtribuida - investimento, investimento) * 100;
+}
+
+export function calcLtvCacRatio(ltv: number, cac: number): number {
+  return safeDivide(ltv, cac);
 }
 
 export function calcCCC(prazoRecebimento: number, prazoEstoque: number, prazoPagamento: number): number {
@@ -1029,17 +1076,27 @@ export const enterprise = {
   thresholds: ENTERPRISE_THRESHOLDS,
   formulas: {
     calcFaturamentoLiquido,
+    calcReceitaLiquida,
     calcEbitdaNormalizada,
     calcRevPas,
     calcBreakEven,
+    calcTaxaOcupacao,
+    calcTaxaConfirmacoes,
+    calcPerdaCapacidadeNaoRecuperavel,
+    calcCustoEstimadoNoShow,
+    calcLeadTimeDias,
     calcCCC,
     calcCGN,
+    calcInadimplenciaRate,
+    calcDespesasFixasReceita,
     calcCustoOportunidade,
     calcMargemPorMinuto,
     calcPaybackCac,
     calcLtvLiquido,
+    calcLtvCacRatio,
     calcNrr,
     calcNps,
+    calcRoi,
     calcImpactoFinanceiro,
   },
   calcRevPasDropPercent,

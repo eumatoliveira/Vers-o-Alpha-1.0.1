@@ -12,16 +12,17 @@ import {
 interface Props {
   activeTab: number;
   lang?: "PT" | "EN" | "ES";
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'night';
+  visualScale: 'normal' | 'large' | 'xl';
   filters: Filters;
   onFiltersChange: (f: Filters) => void;
   appointments?: Appointment[];
 }
 
-function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT", appointments }: Props) {
+function EnterpriseDashboard({ activeTab, theme, visualScale, filters, onFiltersChange, lang = "PT", appointments }: Props) {
   const { currency, convertMoneyValue, formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
   const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
-  const ct = useMemo(() => getChartTheme(theme), [theme]);
+  const ct = useMemo(() => getChartTheme(theme, visualScale), [theme, visualScale]);
   const allData = useMemo(() => appointments ?? getAllAppointments(), [appointments]);
   const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
@@ -241,11 +242,8 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
             </tbody></table>
           </div></div>
         </div>
-      </>)}
 
-      {/* ===== TAB 1: WAR ROOM ENTERPRISE ===== */}
-      {activeTab === 1 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> War Room — Enterprise</h2></div>
+        <div className="section-header"><h2><span className="orange-bar" /> Alertas e Ação — Enterprise</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Alertas P1</div><div className="overview-card-value" style={{color:'var(--red)'}}>{(kpis.noShowRate>10?1:0)+(kpis.avgCAC>150?1:0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Alertas P2</div><div className="overview-card-value" style={{color:'var(--yellow)'}}>{(kpis.avgWait>15?1:0)+(kpis.avgNPS<8?1:0)}</div></div>
@@ -266,10 +264,11 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
           {kpis.avgWait>15 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><div><strong style={{color:'var(--text-primary)'}}>Tempo Espera {kpis.avgWait.toFixed(0)}min</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Redistribuir agenda para reduzir gaps. Resp: Coordenação. Prazo: 14 dias.</p></div></div>}
           {kpis.avgNPS<8 && <div style={{display:'flex',alignItems:'center',gap:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><div><strong style={{color:'var(--text-primary)'}}>NPS {kpis.avgNPS.toFixed(1)} — abaixo da meta</strong><p style={{margin:'2px 0 0',color:'var(--text-secondary)',fontSize:12}}>Ação: Pesquisa qualitativa com detratores. Resp: Qualidade. Prazo: 14 dias.</p></div></div>}
         </div></div>
+      
       </>)}
 
       {/* ===== TAB 2: FINANCEIRO INVESTIDOR ===== */}
-      {activeTab === 2 && (<>
+      {activeTab === 1 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Financeiro - Visao Investidor</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">V01 Multiplo EBITDA</div><div className="overview-card-value" style={{color:investorModel.adjustedMultiple>5?'var(--green)':investorModel.adjustedMultiple<3?'var(--red)':'var(--yellow)'}}>{investorModel.adjustedMultiple.toFixed(1)}x</div></div>
@@ -291,7 +290,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         </div>
       </>)}
       {/* ===== TAB 3: AGENDA / OTIMIZAÇÃO ===== */}
-      {activeTab === 3 && (<>
+      {activeTab === 2 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Agenda / Otimização (Enterprise)</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Total</div><div className="overview-card-value">{kpis.total}</div></div>
@@ -318,7 +317,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
       </>)}
 
       {/* ===== TAB 4: MARKETING / UNIT ECONOMICS ===== */}
-      {activeTab === 4 && (<>
+      {activeTab === 3 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Marketing / Unit Economics</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Leads</div><div className="overview-card-value">{kpis.leads}</div></div>
@@ -345,7 +344,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
       </>)}
 
       {/* ===== TAB 5: MULTI-UNIDADE ===== */}
-      {activeTab === 5 && (<>
+      {activeTab === 4 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Multi-Unidade</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Unidades Ativas</div><div className="overview-card-value">{networkActiveUnits.length}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Base consolidada</span></div></div>
@@ -367,7 +366,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
         </div>
       </>)}
       {/* ===== TAB 6: INTEGRAÇÕES ===== */}
-      {activeTab === 6 && (<>
+      {activeTab === 5 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Integrações (Enterprise)</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Fontes Conectadas</div><div className="overview-card-value">8</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Ativas</span></div></div>
@@ -388,7 +387,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
       </>)}
 
       {/* ===== TAB 7: OPERAÇÃO & EXPERIÊNCIA ===== */}
-      {activeTab === 7 && (<>
+      {activeTab === 6 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Operação & Experiência</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">NPS</div><div className="overview-card-value" style={{color:kpis.avgNPS>=8?'var(--green)':'var(--yellow)'}}>{kpis.avgNPS.toFixed(1)}</div></div>
@@ -418,7 +417,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
       </>)}
 
       {/* ===== TAB 8: EQUIPE ===== */}
-      {activeTab === 8 && (<>
+      {activeTab === 7 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Equipe Enterprise</h2></div>
         <div className="detail-section"><div className="detail-section-header">👥 Ranking Enterprise — Equipe Completa</div><div className="detail-section-body"><table className="data-table"><thead><tr><th>Profissional</th><th>Receita</th><th>{ lang === "EN" ? "Avg Ticket" : lang === "ES" ? "Ticket Promedio" : "Ticket Médio" }</th><th>NPS</th><th>Ocupação</th><th>No-Show</th><th>Margem</th><th>Retorno</th></tr></thead><tbody>
           {byProf.map(p=><tr key={p.name} style={{cursor:'pointer'}} onClick={()=>drillProf(byProf.indexOf(p))}><td style={{fontWeight:600}}>{p.name}</td><td>{fmt(p.grossRevenue)}</td><td>{fmt(p.avgTicket)}</td><td style={{color:p.avgNPS>=8?'var(--green)':'var(--yellow)',fontWeight:700}}>{p.avgNPS.toFixed(1)}</td><td>{p.occupancyRate.toFixed(1)}%</td><td style={{color:p.noShowRate<=10?'var(--green)':'var(--red)',fontWeight:700}}>{p.noShowRate.toFixed(1)}%</td><td style={{color:p.margin>=20?'var(--green)':'var(--yellow)',fontWeight:700}}>{p.margin.toFixed(1)}%</td><td>{p.returnRate.toFixed(1)}%</td></tr>)}
@@ -434,7 +433,7 @@ function EnterpriseDashboard({ activeTab, theme, filters, onFiltersChange, lang 
       </>)}
 
       {/* ===== TAB 9: GOVERNANCA ===== */}
-      {activeTab === 9 && (<>
+      {activeTab === 8 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Governan?a & Compliance</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">LGPD Status</div><div className="overview-card-value" style={{color:'var(--green)',fontSize:16}}>Conforme</div></div>

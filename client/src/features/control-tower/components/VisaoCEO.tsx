@@ -4,7 +4,7 @@ import type { ControlTowerFact, ControlTowerFilterState } from "@shared/types";
 import {
   calcBreakEven,
   calcEbitdaNormalizada,
-  calcFaturamentoLiquido,
+  calcReceitaLiquida,
   calcRevPas,
 } from "@shared/controlTowerRules";
 import type { Language } from "@/i18n";
@@ -25,7 +25,8 @@ export default function VisaoCEO({ language, locale, facts, onDrillDown }: Visao
     const receitaBruta = facts.reduce((sum, row) => sum + row.entries, 0);
     const cancelamentos = facts.filter(row => row.status === "cancelado").reduce((sum, row) => sum + row.entries, 0);
     const inadimplencia = facts.filter(row => row.status === "noshow").reduce((sum, row) => sum + row.ticketMedio * 0.35, 0);
-    const faturamentoLiquido = calcFaturamentoLiquido(receitaBruta, cancelamentos, inadimplencia);
+    const estornos = facts.filter(row => row.status === "cancelado").reduce((sum, row) => sum + row.ticketMedio * 0.08, 0);
+    const faturamentoLiquido = calcReceitaLiquida(receitaBruta, cancelamentos, inadimplencia, estornos);
 
     const custos = facts.reduce((sum, row) => sum + row.exits, 0);
     const lucroOperacional = receitaBruta - custos;
@@ -40,7 +41,9 @@ export default function VisaoCEO({ language, locale, facts, onDrillDown }: Visao
 
     const ticketMedio = facts.length === 0 ? 0 : facts.reduce((sum, row) => sum + row.ticketMedio, 0) / facts.length;
     const custosFixos = custos * 0.55;
-    const breakEven = calcBreakEven(custosFixos, ticketMedio);
+    const custoVariavelMedio = facts.length === 0 ? 0 : facts.reduce((sum, row) => sum + row.custoVariavel, 0) / facts.length;
+    const margemContribuicaoPct = ticketMedio === 0 ? 0 : ((ticketMedio - custoVariavelMedio) / ticketMedio) * 100;
+    const breakEven = calcBreakEven(custosFixos, ticketMedio, margemContribuicaoPct);
 
     const noshowRate = facts.length === 0 ? 0 : (facts.filter(row => row.status === "noshow").length / facts.length) * 100;
     const idleRate = slotsDisponiveis === 0 ? 0 : (facts.reduce((sum, row) => sum + row.slotsEmpty, 0) / slotsDisponiveis) * 100;

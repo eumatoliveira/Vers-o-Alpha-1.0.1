@@ -5,7 +5,7 @@ export const LANG_FLAGS: Record<Lang, string> = { pt: "🇧🇷", es: "🇪🇸"
 
 const T = {
   // ─── Plan labels ───
-  "plan.essencial": { pt: "Essencial", es: "Esencial", en: "Essential" },
+  "plan.essencial": { pt: "Start", es: "Start", en: "Start" },
   "plan.pro": { pt: "Pro", es: "Pro", en: "Pro" },
   "plan.enterprise": { pt: "Enterprise", es: "Enterprise", en: "Enterprise" },
   "plan.current": { pt: "Plano atual", es: "Plan actual", en: "Current plan" },
@@ -13,7 +13,7 @@ const T = {
   "plan.upgradeMsg": { pt: "Este recurso está disponível a partir do plano", es: "Esta función está disponible a partir del plan", en: "This feature is available from the" },
   "plan.contact": { pt: "Fale com nosso time", es: "Contacte a nuestro equipo", en: "Contact our team" },
   "plan.locked": { pt: "Bloqueado", es: "Bloqueado", en: "Locked" },
-  "plan.badge.essencial": { pt: "⚡ Essencial", es: "⚡ Esencial", en: "⚡ Essential" },
+  "plan.badge.essencial": { pt: "⚡ Start", es: "⚡ Start", en: "⚡ Start" },
   "plan.badge.pro": { pt: "👑 Pro", es: "👑 Pro", en: "👑 Pro" },
   "plan.badge.enterprise": { pt: "🏢 Enterprise", es: "🏢 Enterprise", en: "🏢 Enterprise" },
 
@@ -241,7 +241,7 @@ const T = {
   "ai.crm.auth": { pt: "Autenticando API do CRM (HubSpot/RD)...", es: "Autenticando API del CRM (HubSpot/RD)...", en: "Authenticating CRM API (HubSpot/RD)..." },
   "ai.crm.extract": { pt: "Extraindo pipeline de vendas e contatos...", es: "Extrayendo pipeline de ventas y contactos...", en: "Extracting sales pipeline and contacts..." },
   "ai.crm.routeLeads": { pt: "=> Roteando 'Leads Captados' para o módulo: Funil Comercial", es: "=> Enrutando 'Leads Captados' al módulo: Embudo Comercial", en: "=> Routing 'Captured Leads' to module: Sales Funnel" },
-  "ai.crm.routeConversions": { pt: "=> Roteando 'Conversões' para o módulo: Dashboard Essencial", es: "=> Enrutando 'Conversiones' al módulo: Dashboard Esencial", en: "=> Routing 'Conversions' to module: Essential Dashboard" },
+  "ai.crm.routeConversions": { pt: "=> Roteando 'Conversões' para o módulo: Dashboard Start", es: "=> Enrutando 'Conversiones' al módulo: Dashboard Start", en: "=> Routing 'Conversions' to module: Start Dashboard" },
   "ai.crm.sync": { pt: "Sincronização em tempo real estabelecida.", es: "Sincronización en tiempo real establecida.", en: "Real-time synchronization established." },
   // AI Router steps - Token
   "ai.token.validate": { pt: "Validando Token de Integração...", es: "Validando Token de Integración...", en: "Validating Integration Token..." },

@@ -1,4 +1,4 @@
-import { useMemo, useCallback, memo } from 'react';
+import { useMemo, useCallback, memo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { getChartTheme } from '../utils/chartOptions';
@@ -12,13 +12,27 @@ import {
 interface Props {
   activeTab: number;
   lang?: "PT" | "EN" | "ES";
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'night';
+  visualScale: 'normal' | 'large' | 'xl';
   filters: Filters;
   onFiltersChange: (f: Filters) => void;
   appointments?: Appointment[];
 }
 
 type Priority = 'P1' | 'P2' | 'P3' | 'OK';
+type ProfessionalRow = ReturnType<typeof computeByProfessional>[number];
+
+type TeamMemberForm = {
+  name: string;
+  role: string;
+  realized: string;
+  grossRevenue: string;
+  avgTicket: string;
+  avgNPS: string;
+  noShowRate: string;
+  occupancyRate: string;
+  avgWait: string;
+};
 
 function weekKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -34,10 +48,22 @@ function badge(priority: Priority) {
   return { label: 'OK', className: 'green' };
 }
 
-function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT", appointments }: Props) {
+const EMPTY_TEAM_MEMBER_FORM: TeamMemberForm = {
+  name: '',
+  role: '',
+  realized: '',
+  grossRevenue: '',
+  avgTicket: '',
+  avgNPS: '',
+  noShowRate: '',
+  occupancyRate: '',
+  avgWait: '',
+};
+
+function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange, lang = "PT", appointments }: Props) {
   const { currency, convertMoneyValue, formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
   const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
-  const ct = useMemo(() => getChartTheme(theme), [theme]);
+  const ct = useMemo(() => getChartTheme(theme, visualScale), [theme, visualScale]);
   const allData = useMemo(() => appointments ?? getAllAppointments(), [appointments]);
   const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
@@ -47,7 +73,19 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
   const byProc = useMemo(() => computeByProcedure(filtered), [filtered]);
   const byWeekday = useMemo(() => computeByWeekday(filtered), [filtered]);
   const weeklyTrend = useMemo(() => computeWeeklyTrend(filtered), [filtered]);
+  const [teamMemberForm, setTeamMemberForm] = useState<TeamMemberForm>(EMPTY_TEAM_MEMBER_FORM);
+  const [manualTeamMembers, setManualTeamMembers] = useState<ProfessionalRow[]>([]);
+  const [editingManualTeamMemberIndex, setEditingManualTeamMemberIndex] = useState<number | null>(null);
+  const [editingBaseTeamMemberName, setEditingBaseTeamMemberName] = useState<string | null>(null);
+  const [deletedBaseTeamMemberNames, setDeletedBaseTeamMemberNames] = useState<string[]>([]);
+  const [baseTeamMemberOverrides, setBaseTeamMemberOverrides] = useState<Record<string, ProfessionalRow>>({});
   const activeChannels = useMemo(() => byChannel.filter(c => c.total > 0), [byChannel]);
+  const displayedTeamMembers = useMemo(() => [
+    ...byProf
+      .filter((member) => !deletedBaseTeamMemberNames.includes(member.name))
+      .map((member) => baseTeamMemberOverrides[member.name] ?? member),
+    ...manualTeamMembers,
+  ], [baseTeamMemberOverrides, byProf, deletedBaseTeamMemberNames, manualTeamMembers]);
   const sortedFiltered = useMemo(() => [...filtered].sort((a,b) => a.date.localeCompare(b.date)), [filtered]);
   const agendaProWeeks = useMemo(() => {
     const buckets = new Map<string, typeof filtered>();
@@ -419,6 +457,148 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
     if (name) onFiltersChange({ ...filters, procedure: filters.procedure === name ? '' : name });
   }, [byProc, filters, onFiltersChange]);
 
+  const handleTeamMemberFormChange = useCallback((field: keyof TeamMemberForm, value: string) => {
+    setTeamMemberForm((current) => ({ ...current, [field]: value }));
+  }, []);
+
+  const handleAddTeamMember = useCallback(() => {
+    if (!teamMemberForm.name.trim()) return;
+    const realized = Number(teamMemberForm.realized) || 0;
+    const grossRevenue = Number(teamMemberForm.grossRevenue) || 0;
+    const avgTicket = Number(teamMemberForm.avgTicket) || (realized > 0 ? grossRevenue / realized : 0);
+    const avgNPS = Number(teamMemberForm.avgNPS) || 0;
+    const noShowRate = Number(teamMemberForm.noShowRate) || 0;
+    const occupancyRate = Number(teamMemberForm.occupancyRate) || 0;
+    const avgWait = Number(teamMemberForm.avgWait) || 0;
+    const leads = Math.max(0, Math.round(realized * 0.35));
+    const noShows = Math.max(0, Math.round((realized * noShowRate) / Math.max(1, 100 - noShowRate)));
+    const total = realized + noShows;
+    const totalCost = grossRevenue * 0.48;
+    const fixedExpenses = grossRevenue * 0.18;
+    const netRevenue = grossRevenue * 0.92;
+
+    const nextMember = {
+      name: teamMemberForm.name.trim(),
+      total,
+      realized,
+      noShows,
+      canceled: Math.max(0, Math.round(total * 0.05)),
+      grossRevenue,
+      netRevenue,
+      totalCost,
+      fixedExpenses,
+      margin: grossRevenue > 0 ? ((netRevenue - totalCost) / grossRevenue) * 100 : 0,
+      ebitda: netRevenue - fixedExpenses,
+      avgTicket,
+      noShowRate,
+      occupancyRate,
+      cancelRate: 5,
+      confirmationRate: 88,
+      lostCapacityRate: Math.max(0, 100 - occupancyRate),
+      noShowEstimatedCost: noShows * avgTicket,
+      leadTimeDays: 1.8,
+      inadimplenciaRate: 3.2,
+      fixedExpenseRatio: netRevenue > 0 ? (fixedExpenses / netRevenue) * 100 : 0,
+      breakEven: fixedExpenses > 0 ? fixedExpenses / Math.max(avgTicket * 0.45, 1) : 0,
+      avgNPS,
+      avgWait,
+      returnRate: 32,
+      avgCAC: 110,
+      leads,
+      cpl: leads > 0 ? 65 : 0,
+      capacityAvailable: occupancyRate > 0 ? Math.round((realized / occupancyRate) * 100) : total,
+      totalAdSpend: leads * 65,
+      cancellationLoss: grossRevenue * 0.03,
+      inadimplenciaLoss: grossRevenue * 0.02,
+      estornoLoss: grossRevenue * 0.01,
+      slaLeadHours: 1.2,
+      promoters: Math.max(0, Math.round(realized * 0.45)),
+      neutrals: Math.max(0, Math.round(realized * 0.35)),
+      detractors: Math.max(0, Math.round(realized * 0.2)),
+      complaints: Math.max(0, Math.round(realized * 0.06)),
+    };
+
+    setManualTeamMembers((current) => {
+      if (editingBaseTeamMemberName) {
+        return current;
+      }
+
+      if (editingManualTeamMemberIndex === null) {
+        return [...current, nextMember];
+      }
+
+      return current.map((member, index) => (
+        index === editingManualTeamMemberIndex ? nextMember : member
+      ));
+    });
+    if (editingBaseTeamMemberName) {
+      setBaseTeamMemberOverrides((current) => ({ ...current, [editingBaseTeamMemberName]: nextMember }));
+      setDeletedBaseTeamMemberNames((current) => current.filter((name) => name !== editingBaseTeamMemberName));
+    }
+    setTeamMemberForm(EMPTY_TEAM_MEMBER_FORM);
+    setEditingManualTeamMemberIndex(null);
+    setEditingBaseTeamMemberName(null);
+  }, [editingBaseTeamMemberName, editingManualTeamMemberIndex, teamMemberForm]);
+
+  const handleEditManualTeamMember = useCallback((index: number) => {
+    const member = manualTeamMembers[index];
+    if (!member) return;
+
+    setTeamMemberForm({
+      name: member.name,
+      role: '',
+      realized: String(member.realized),
+      grossRevenue: String(Math.round(member.grossRevenue)),
+      avgTicket: String(Math.round(member.avgTicket)),
+      avgNPS: member.avgNPS.toFixed(1),
+      noShowRate: member.noShowRate.toFixed(1),
+      occupancyRate: member.occupancyRate.toFixed(1),
+      avgWait: member.avgWait.toFixed(0),
+    });
+    setEditingManualTeamMemberIndex(index);
+    setEditingBaseTeamMemberName(null);
+  }, [manualTeamMembers]);
+
+  const handleEditBaseTeamMember = useCallback((name: string) => {
+    const member = displayedTeamMembers.find((current) => current.name === name);
+    if (!member) return;
+
+    setTeamMemberForm({
+      name: member.name,
+      role: '',
+      realized: String(member.realized),
+      grossRevenue: String(Math.round(member.grossRevenue)),
+      avgTicket: String(Math.round(member.avgTicket)),
+      avgNPS: member.avgNPS.toFixed(1),
+      noShowRate: member.noShowRate.toFixed(1),
+      occupancyRate: member.occupancyRate.toFixed(1),
+      avgWait: member.avgWait.toFixed(0),
+    });
+    setEditingBaseTeamMemberName(name);
+    setEditingManualTeamMemberIndex(null);
+  }, [displayedTeamMembers]);
+
+  const handleDeleteManualTeamMember = useCallback((index: number) => {
+    setManualTeamMembers((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    setEditingManualTeamMemberIndex((current) => (current === index ? null : current));
+  }, []);
+
+  const handleDeleteBaseTeamMember = useCallback((name: string) => {
+    setDeletedBaseTeamMemberNames((current) => current.includes(name) ? current : [...current, name]);
+    setBaseTeamMemberOverrides((current) => {
+      const next = { ...current };
+      delete next[name];
+      return next;
+    });
+    setEditingBaseTeamMemberName((current) => current === name ? null : current);
+  }, []);
+
+  const handleCancelTeamMemberEdit = useCallback(() => {
+    setTeamMemberForm(EMPTY_TEAM_MEMBER_FORM);
+    setEditingManualTeamMemberIndex(null);
+    setEditingBaseTeamMemberName(null);
+  }, []);
+
   const profClick = useMemo(() => ({ chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillProf(cfg.dataPointIndex) } } }), [drillProf]);
   const channelClick = useMemo(() => ({ chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillChannel(cfg.dataPointIndex) } } }), [drillChannel]);
   const procClick = useMemo(() => ({ chart: { events: { dataPointSelection: (_e: any, _c: any, cfg: any) => drillProc(cfg.dataPointIndex) } } }), [drillProc]);
@@ -459,51 +639,42 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
             </tbody></table>
           </div></div>
         </div>
-      </>)}
 
-      {/* ===== WAR ROOM ===== */}
-      {activeTab === 1 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> War Room — Alertas e Ação</h2></div>
+        <div className="section-header"><h2><span className="orange-bar" /> Alertas e Ação</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">No-Show Rate</div><div className="overview-card-value" style={{color:kpis.noShowRate>10?'var(--red)':'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">Cancelamentos</div><div className="overview-card-value">{kpis.canceled}</div></div>
+          <div className="overview-card"><div className="overview-card-label">No-Show Rate</div><div className="overview-card-value" style={{color:kpis.noShowRate>10?'var(--red)':'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div><div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5}}>Percentual de faltas sobre todos os agendamentos.</div></div>
+          <div className="overview-card"><div className="overview-card-label">Cancelamentos</div><div className="overview-card-value">{kpis.canceled}</div><div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5}}>Total de agendas canceladas antes do atendimento.</div></div>
           <div className="overview-card"><div className="overview-card-label">Espera Média</div><div className="overview-card-value" style={{color:kpis.avgWait>15?'var(--yellow)':'var(--green)'}}>{kpis.avgWait.toFixed(0)} min</div></div>
-          <div className="overview-card"><div className="overview-card-label">Detratores NPS</div><div className="overview-card-value" style={{color:'var(--red)'}}>{kpis.detractors}</div></div>
+          <div className="overview-card"><div className="overview-card-label">Detratores NPS</div><div className="overview-card-value" style={{color:'var(--red)'}}>{kpis.detractors}</div><div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5}}>Pacientes com nota baixa e maior risco de reclamação.</div></div>
         </div>
         <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">No-Show vs Cancelamentos (Semanal)</span></div><div className="chart-card-body">
+          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">No-Show vs Cancelamentos (Semanal)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Compara faltas e cancelamentos por semana</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{borderRadius:4,columnWidth:'40%'}},colors:['#eab308','#ef4444'],xaxis:{...ct.xaxis,categories:weeklyTrend.map(w=>w.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'No-Show',data:weeklyTrend.map(w=>w.noShows)},{name:'Cancelados',data:weeklyTrend.map(w=>w.canceled)}]} type="bar" height={230}/>
+            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,padding:'4px 12px 0'}}>Mostra se a perda da agenda veio de faltas no dia ou de cancelamentos antecipados.</div>
           </div></div>
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Heatmap Espera (Prof × Dia)</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{type:'heatmap'},colors:['#ff5a1f'],dataLabels:{enabled:true},plotOptions:{heatmap:{shadeIntensity:0.5,colorScale:{ranges:[{from:0,to:15,color:'#22c55e',name:'OK'},{from:16,to:25,color:'#eab308',name:'Atenção'},{from:26,to:60,color:'#ef4444',name:'Crítico'}]}}}}} series={byProf.map(p=>({name:p.name,data:byWeekday.map(w=>({x:w.name,y:Math.round(w.avgWait+(p.avgWait-kpis.avgWait)*0.5)}))}))} type="heatmap" height={200}/>
+            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,padding:'4px 12px 0'}}>Verde ? fluxo saud?vel; amarelo e vermelho apontam gargalos operacionais.</div>
           </div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">No-Show por Profissional</span><span style={{fontSize:10,color:'var(--text-muted)'}}>👆 Clique</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,...profClick,chart:{...ct.chart,type:'bar',...profClick.chart},plotOptions:{bar:{distributed:true}},colors:['#ef4444','#eab308','#ff5a1f'],xaxis:{...ct.xaxis,categories:byProf.map(p=>p.name)},legend:{show:false}}} series={[{name:'No-Show %',data:byProf.map(p=>+p.noShowRate.toFixed(1))}]} type="bar" height={200}/>
+            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,padding:'4px 12px 0'}}>Ajuda a localizar onde a taxa de falta est? mais concentrada dentro da equipe.</div>
           </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Alertas Ativos</span></div><div className="chart-card-body" style={{padding:14}}>
+          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Alertas Ativos</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Prioridades que pedem a??o operacional</span></div><div className="chart-card-body" style={{padding:14}}>
             {kpis.noShowRate>10 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>No-Show Rate {kpis.noShowRate.toFixed(1)}% — acima da meta</span></div>}
             {kpis.avgCAC>150 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>CAC {fmt(kpis.avgCAC)} — acima do teto {formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}</span></div>}
             {kpis.avgWait>15 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><span style={{color:'var(--text-secondary)',fontSize:12}}>Espera {kpis.avgWait.toFixed(0)}min — meta {'<'}15min</span></div>}
             {kpis.avgNPS<8 && <div style={{display:'flex',alignItems:'center',gap:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><span style={{color:'var(--text-secondary)',fontSize:12}}>NPS {kpis.avgNPS.toFixed(1)} — abaixo da meta 8.0</span></div>}
           </div></div>
         </div>
+      
       </>)}
 
       {/* ===== FINANCEIRO AVANCADO ===== */}
-      {activeTab === 2 && (<>
+      {activeTab === 1 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Financeiro Avancado</h2></div>
-        <div className="chart-card" style={{ marginBottom: 16 }}>
-          <div className="chart-card-header"><span className="chart-card-title">P1/P2/P3 - Regras Financeiro Avancado</span><span style={{ fontSize: 10, color: 'var(--text-muted)' }}>EBITDA, aging, caixa, concentracao e break-even</span></div>
-          <div className="chart-card-body" style={{ padding: 12 }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {['P1', 'P2', 'P3'].map((p, idx) => (
-                <span key={p} className={`chart-card-badge ${idx === 0 ? 'red' : idx === 1 ? 'yellow' : 'blue'}`} style={{ display: 'inline-block' }}>{p}</span>
-              ))}
-            </div>
-          </div>
-        </div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">{moneyTitle('EBITDA')}</div><div className="overview-card-value">{fmt(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitda ?? 0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Margem EBITDA</div><div className="overview-card-value" style={{ color: (financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitdaMargin ?? 0) >= 20 ? 'var(--green)' : 'var(--yellow)' }}>{(financeAdvWeeks[financeAdvWeeks.length - 1]?.ebitdaMargin ?? 0).toFixed(1)}%</div></div>
@@ -516,13 +687,6 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
               <ReactApexChart options={{ ...ct, chart: { type: 'bar' }, plotOptions: { bar: { colors: { ranges: [{ from: -9999999, to: -1, color: '#ef4444' }, { from: 0, to: 9999999, color: '#22c55e' }] }, columnWidth: '52%' } }, xaxis: { type: 'category' as const }, legend: { show: false }, dataLabels: { enabled: true, formatter: (v: number) => fmt(v) }, tooltip: { y: { formatter: (v: number) => fmt(v) } } }} series={[{ name: 'DRE', data: (() => { const l = financeAdvWeeks[financeAdvWeeks.length - 1]; if (!l) return []; return [{ x: 'RL', y: Math.round(l.netRevenue) }, { x: 'CMV', y: -Math.round(l.cmv) }, { x: 'Variaveis', y: -Math.round(l.variable) }, { x: 'Fixos', y: -Math.round(l.fixedProrata) }, { x: 'EBITDA', y: Math.round(l.ebitda) }]; })() }]} type="bar" height={250} />
               <ReactApexChart options={{ ...ct, chart: { ...ct.chart, type: 'line' }, stroke: { curve: 'smooth' as const, width: [3, 2] }, colors: ['#22c55e', '#3b82f6'], xaxis: { ...ct.xaxis, categories: financeAdvWeeks.map((w) => w.label) }, annotations: { yaxis: [{ y: 20, borderColor: '#22c55e', strokeDashArray: 4, label: { text: 'Meta 20%', style: { color: '#fff', background: '#22c55e' } } }, { y: 15, borderColor: '#eab308', strokeDashArray: 4, label: { text: 'P2', style: { color: '#111', background: '#eab308' } } }, { y: 10, borderColor: '#ef4444', strokeDashArray: 4, label: { text: 'P1', style: { color: '#fff', background: '#ef4444' } } }] }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={[{ name: 'EBITDA %', data: financeAdvWeeks.map((w) => +w.ebitdaMargin.toFixed(1)) }, { name: 'Meta', data: financeAdvWeeks.map(() => 20) }]} type="line" height={250} />
             </div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">04 Forecast Semanal de Receita (IA)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{ ...ct, chart: { ...ct.chart, type: 'line' }, stroke: { curve: 'smooth' as const, width: [0, 2, 2] }, xaxis: { ...ct.xaxis, categories: financeAdvWeeks.map((w) => w.label) }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={([
-              { name: 'Faixa P10-P90', type: 'rangeArea', data: financeAdvWeeks.map((w) => ({ x: w.label, y: [Math.round(w.forecastP10), Math.round(w.forecastP90)] })) },
-              { name: 'Forecast P50', data: financeAdvWeeks.map((w) => Math.round(w.forecastP50)) },
-              { name: 'Real', data: financeAdvWeeks.map((w) => Math.round(w.grossRevenue)) },
-            ] as any)} type="line" height={250} />
           </div></div>
         </div>
         <div className="chart-grid">
@@ -552,17 +716,10 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
             </div>
           </div></div>
         </div>
-        <div className="detail-section"><div className="detail-section-header">Regras de Negocio - Financeiro Avancado</div><div className="detail-section-body"><table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Acao</th></tr></thead><tbody>
-          {financeAdvRules.map((r) => <tr key={r.id}><td>{r.id}</td><td>{r.kpi}</td><td style={{ fontWeight: 700 }}>{r.value}</td><td>{r.meta}</td><td>{r.baseN}</td><td><span className={`chart-card-badge ${badge(r.priority).className}`} style={{ display: 'inline-block' }}>{badge(r.priority).label}</span></td><td>{r.action}</td></tr>)}
-        </tbody></table></div></div>
       </>)}
       {/* ===== AGENDA / OTIMIZAÇÃO ===== */}
-      {activeTab === 3 && (<>
+      {activeTab === 2 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Agenda / Otimização</h2></div>
-        <div className="chart-card" style={{marginBottom: 16}}>
-          <div className="chart-card-header"><span className="chart-card-title">P1/P2/P3 - Regras da Agenda Pro</span><span style={{fontSize:10,color:'var(--text-muted)'}}>P1 24h | P2 7 dias | P3 Monitorar</span></div>
-          <div className="chart-card-body" style={{padding:12}}><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{['P1','P2','P3'].map((p,idx)=><span key={p} className={`chart-card-badge ${idx===0?'red':idx===1?'yellow':'blue'}`} style={{display:'inline-block'}}>{p}</span>)}</div></div>
-        </div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Total</div><div className="overview-card-value">{kpis.total}</div></div>
           <div className="overview-card"><div className="overview-card-label">Realizadas</div><div className="overview-card-value">{kpis.realized}</div></div>
@@ -596,12 +753,9 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
             </div>
           </div></div>
         </div>
-        <div className="detail-section"><div className="detail-section-header">—  Regras de Negócio - Agenda Pro</div><div className="detail-section-body"><table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Ação</th></tr></thead><tbody>
-          {agendaProRules.map((r)=><tr key={r.id}><td>{r.id}</td><td>{r.kpi}</td><td style={{fontWeight:700}}>{r.value}</td><td>{r.meta}</td><td>{r.baseN}</td><td><span className={`chart-card-badge ${badge(r.priority).className}`} style={{display:'inline-block'}}>{badge(r.priority).label}</span></td><td>{r.action}</td></tr>)}
-        </tbody></table></div></div>
       </>)}
       {/* ===== MARKETING / UNIT ECONOMICS ===== */}
-      {activeTab === 4 && (<>
+      {activeTab === 3 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Marketing / Unit Economics</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Leads</div><div className="overview-card-value">{marketingProWeeks[marketingProWeeks.length-1]?.leadsTotal ?? 0}</div></div>
@@ -640,15 +794,10 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Waterfall Variacao de Receita</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{colors:{ranges:[{from:-999999,to:-1,color:'#ef4444'},{from:0,to:999999,color:'#22c55e'}]},columnWidth:'55%'}},xaxis:{type:'category' as const},legend:{show:false},dataLabels:{enabled:true,formatter:(v:number)=>fmt(v)},tooltip:{y:{formatter:(v:number)=>fmt(v)}}}} series={[{name:'Waterfall',data:(()=>{const cur=marketingProWeeks[marketingProWeeks.length-1]; const prev=marketingProWeeks[marketingProWeeks.length-2]; const prevRev=prev?.revenue ?? 0; const curRev=cur?.revenue ?? 0; const delta=curRev-prevRev; const vol=delta*0.35; const preco=delta*0.22; const mix=delta*0.16; const noShow=-Math.abs(delta*0.11); const ret=delta-(vol+preco+mix+noShow); return [{x:'Receita t-1',y:Math.round(prevRev)},{x:'Volume',y:Math.round(vol)},{x:'Preco',y:Math.round(preco)},{x:'Mix',y:Math.round(mix)},{x:'No-show',y:Math.round(noShow)},{x:'Retencao',y:Math.round(ret)},{x:'Receita t',y:Math.round(curRev)}];})()}]} type="bar" height={240}/>
           </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Regras de Negocio - Marketing Pro</span></div><div className="chart-card-body" style={{padding:12}}>
-            <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Acao</th></tr></thead><tbody>
-              {marketingProRules.map((r)=><tr key={r.id}><td>{r.id}</td><td>{r.kpi}</td><td style={{fontWeight:700}}>{r.value}</td><td>{r.meta}</td><td>{r.baseN}</td><td><span className={`chart-card-badge ${badge(r.priority).className}`} style={{display:'inline-block'}}>{badge(r.priority).label}</span></td><td>{r.action}</td></tr>)}
-            </tbody></table>
-          </div></div>
         </div>
       </>)}
       {/* ===== INTEGRAÇÕES ===== */}
-      {activeTab === 5 && (<>
+      {activeTab === 4 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Integrações</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Fontes Conectadas</div><div className="overview-card-value">6</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Ativas</span></div></div>
@@ -667,7 +816,7 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
       </>)}
 
       {/* ===== OPERACAO & EXPERIENCIA ===== */}
-      {activeTab === 6 && (<>
+      {activeTab === 5 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Operacao & Experiencia</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">NPS</div><div className="overview-card-value" style={{color:kpis.avgNPS>=8?'var(--green)':'var(--yellow)'}}>{kpis.avgNPS.toFixed(1)}</div></div>
@@ -715,25 +864,98 @@ function ProDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT",
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Status de Checklists / Rotinas (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Barra de progresso por area</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,borderRadius:4,barHeight:'56%'}},colors:checklistByArea.map(r=>r.pct<70?'#eab308':r.pct<90?'#3b82f6':'#22c55e'),xaxis:{...ct.xaxis,max:100},legend:{show:false}}} series={[{name:'Checklists %',data:checklistByArea.map(r=>({x:`${r.area} (${r.role})`,y:+r.pct.toFixed(1)}))}]} type="bar" height={220}/>
           </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Regras de Negocio - Operacao & Experiencia</span></div><div className="chart-card-body" style={{padding:12}}>
-            <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Acao</th></tr></thead><tbody>
-              {opsProRules.map((r)=><tr key={r.id}><td>{r.id}</td><td>{r.kpi}</td><td style={{fontWeight:700}}>{r.value}</td><td>{r.meta}</td><td>{r.baseN}</td><td><span className={`chart-card-badge ${badge(r.priority).className}`} style={{display:'inline-block'}}>{badge(r.priority).label}</span></td><td>{r.action}</td></tr>)}
-            </tbody></table>
-          </div></div>
         </div>
       </>)}
       {/* ===== EQUIPE ===== */}
-      {activeTab === 7 && (<>
+      {activeTab === 6 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Equipe</h2></div>
+        <div className="chart-card" style={{ marginBottom: 16 }}>
+          <div className="chart-card-header">
+            <span className="chart-card-title">Adicionar membro da equipe</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Cadastro manual para compor tabela e rankings</span>
+          </div>
+          <div className="chart-card-body" style={{ padding: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+              {[
+                { key: 'name', label: 'Nome', placeholder: 'Ex.: Dra. Paula' },
+                { key: 'role', label: 'Area / funcao', placeholder: 'Ex.: Recepcao' },
+                { key: 'realized', label: 'Consultas', placeholder: '92' },
+                { key: 'grossRevenue', label: 'Receita', placeholder: '60600' },
+                { key: 'avgTicket', label: 'Ticket medio', placeholder: '659' },
+                { key: 'avgNPS', label: 'NPS', placeholder: '8.1' },
+                { key: 'noShowRate', label: 'No-show %', placeholder: '9.4' },
+                { key: 'occupancyRate', label: 'Ocupacao %', placeholder: '64.2' },
+                { key: 'avgWait', label: 'Espera min', placeholder: '18' },
+              ].map((field) => (
+                <label key={field.key} style={{ display: 'grid', gap: 6, color: 'var(--text-secondary)', fontSize: 12 }}>
+                  <span>{field.label}</span>
+                  <input
+                    value={teamMemberForm[field.key as keyof TeamMemberForm]}
+                    onChange={(event) => handleTeamMemberFormChange(field.key as keyof TeamMemberForm, event.target.value)}
+                    placeholder={field.placeholder}
+                    style={{
+                      width: '100%',
+                      borderRadius: 12,
+                      border: '1px solid rgba(249, 115, 22, 0.18)',
+                      background: 'rgba(15, 23, 42, 0.55)',
+                      color: 'var(--text-primary)',
+                      padding: '10px 12px',
+                      outline: 'none',
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                Os dados adicionados aqui entram na tabela e nos gráficos desta aba.
+              </span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {editingManualTeamMemberIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={handleCancelTeamMemberEdit}
+                    style={{
+                      border: '1px solid rgba(148, 163, 184, 0.24)',
+                      borderRadius: 999,
+                      background: 'transparent',
+                      color: 'var(--text-primary)',
+                      fontWeight: 600,
+                      padding: '10px 16px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddTeamMember}
+                  style={{
+                    border: 'none',
+                    borderRadius: 999,
+                    background: '#f97316',
+                    color: '#111827',
+                    fontWeight: 700,
+                    padding: '10px 16px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {editingManualTeamMemberIndex === null ? 'Adicionar membro' : 'Salvar alteraÃ§Ãµes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="detail-section"><div className="detail-section-header">👥 Performance da Equipe</div><div className="detail-section-body"><table className="data-table"><thead><tr><th>Profissional</th><th>Consultas</th><th>Receita</th><th>{ lang === "EN" ? "Avg Ticket" : lang === "ES" ? "Ticket Promedio" : "Ticket Médio" }</th><th>NPS</th><th>No-Show</th><th>Ocupação</th><th>Espera</th></tr></thead><tbody>
-          {byProf.map(p=><tr key={p.name} style={{cursor:'pointer'}} onClick={()=>drillProf(byProf.indexOf(p))}><td style={{fontWeight:600}}>{p.name}</td><td>{p.realized}</td><td>{fmt(p.grossRevenue)}</td><td>{fmt(p.avgTicket)}</td><td style={{color:p.avgNPS>=8?'var(--green)':'var(--yellow)',fontWeight:700}}>{p.avgNPS.toFixed(1)}</td><td style={{color:p.noShowRate<=10?'var(--green)':'var(--red)',fontWeight:700}}>{p.noShowRate.toFixed(1)}%</td><td>{p.occupancyRate.toFixed(1)}%</td><td>{p.avgWait.toFixed(0)} min</td></tr>)}
+          {displayedTeamMembers.map((p, idx)=>{ const visibleBaseCount = displayedTeamMembers.length - manualTeamMembers.length; const isManual = idx >= visibleBaseCount; const manualIndex = idx - visibleBaseCount; return <tr key={`${p.name}-${idx}`} style={{cursor:'default'}}><td style={{fontWeight:600}}>{p.name}</td><td>{p.realized}</td><td>{fmt(p.grossRevenue)}</td><td>{fmt(p.avgTicket)}</td><td style={{color:p.avgNPS>=8?'var(--green)':'var(--yellow)',fontWeight:700}}>{p.avgNPS.toFixed(1)}</td><td style={{color:p.noShowRate<=10?'var(--green)':'var(--red)',fontWeight:700}}>{p.noShowRate.toFixed(1)}%</td><td>{p.occupancyRate.toFixed(1)}%</td><td>{p.avgWait.toFixed(0)} min</td><td><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button type="button" onClick={(event)=>{event.stopPropagation(); if (isManual) { handleEditManualTeamMember(manualIndex); } else { handleEditBaseTeamMember(p.name); }}} style={{border:'1px solid rgba(59,130,246,0.28)',borderRadius:999,background:'transparent',color:'#3b82f6',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>Editar</button><button type="button" onClick={(event)=>{event.stopPropagation(); if (isManual) { handleDeleteManualTeamMember(manualIndex); } else { handleDeleteBaseTeamMember(p.name); }}} style={{border:'1px solid rgba(239,68,68,0.28)',borderRadius:999,background:'transparent',color:'#ef4444',padding:'6px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>Excluir</button></div></td></tr>; })}
         </tbody></table></div></div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Ranking Receita</span><span style={{fontSize:10,color:'var(--text-muted)'}}>👆 Clique</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...profClick,chart:{...ct.chart,type:'bar',...profClick.chart},plotOptions:{bar:{horizontal:true,distributed:true}},colors:['#ff5a1f','#45a29e','#3b82f6'],xaxis:{...ct.xaxis,categories:byProf.map(p=>p.name)},legend:{show:false}}} series={[{name:'Receita',data:byProf.map(p=>Math.round(p.grossRevenue))}]} type="bar" height={200}/>
+            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true}},colors:displayedTeamMembers.map((_, idx)=>['#ff5a1f','#45a29e','#3b82f6','#22c55e','#f59e0b','#8b5cf6'][idx % 6]),xaxis:{...ct.xaxis,categories:displayedTeamMembers.map(p=>p.name)},legend:{show:false}}} series={[{name:'Receita',data:displayedTeamMembers.map(p=>Math.round(p.grossRevenue))}]} type="bar" height={200}/>
           </div></div>
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Ranking NPS</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...profClick,chart:{...ct.chart,type:'bar',...profClick.chart},plotOptions:{bar:{horizontal:true,distributed:true}},colors:['#22c55e','#eab308','#ef4444'],xaxis:{...ct.xaxis,categories:byProf.map(p=>p.name)},legend:{show:false}}} series={[{name:'NPS',data:byProf.map(p=>+p.avgNPS.toFixed(1))}]} type="bar" height={200}/>
+            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true}},colors:displayedTeamMembers.map((p)=>p.avgNPS>=8?'#22c55e':p.avgNPS>=7.5?'#eab308':'#ef4444'),xaxis:{...ct.xaxis,categories:displayedTeamMembers.map(p=>p.name)},legend:{show:false}}} series={[{name:'NPS',data:displayedTeamMembers.map(p=>+p.avgNPS.toFixed(1))}]} type="bar" height={200}/>
           </div></div>
         </div>
       </>)}

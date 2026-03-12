@@ -97,7 +97,7 @@ const PRO_GAPS_V2 = [
 ];
 
 const PRO_VALUE_DELIVERED = [
-  "Tudo do Essencial + 4 modulos avancados com granularidade por profissional/servico",
+  "Tudo do Start + 4 modulos avancados com granularidade por profissional/servico",
   "Simuladores interativos: overbooking, forecast, break-even e mix de servicos",
   "Margem real por procedimento - identifica quais servicos destroem e quais criam valor",
   "LTV e CAC completo por canal - decisao de marketing baseada em ROI real",
@@ -390,7 +390,7 @@ function DomainModulePageInner({ module }: { module: DomainPageModule }) {
       ? "Plano Enterprise"
       : planRulebook.plan === "pro"
         ? "Plano Pro"
-        : "Plano Essencial";
+        : "Plano Start";
   if (isOperacoesModule) {
     return (
       <ControlTowerClientLayout
@@ -737,7 +737,7 @@ function DomainModulePageInner({ module }: { module: DomainPageModule }) {
             </div>
 
             {plan === "essencial" ? (
-              <Panel title="Plano Essencial ativo" metricKey="impacto_financeiro" language={language}>
+              <Panel title="Plano Start ativo" metricKey="impacto_financeiro" language={language}>
                 <div className="space-y-3">
                   <p className="text-sm text-slate-200">
                     {planRulebook.narrative.description}

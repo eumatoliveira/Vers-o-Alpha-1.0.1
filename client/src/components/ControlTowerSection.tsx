@@ -29,7 +29,7 @@ export default function ControlTowerSection() {
         "Dashboard executivo com alertas automaticos, forecast de receita, mapa de margem por procedimento e visao em tempo real de agenda, caixa, captacao e operacao.",
       plans: [
         {
-          name: "Essencial",
+          name: "Start",
           audience: "Para clinicas em estruturacao",
           features: [
             "Dashboard executivo",

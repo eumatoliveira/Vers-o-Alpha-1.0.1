@@ -980,7 +980,7 @@ function RoleDashboardPageContent({ view }: { view: RoleDashboardView }) {
           <section id="section-ceo-growth">
             <Panel title="Graficos avancados (Pro/Enterprise)" metricKey="funnel_matematico" language={language}>
               <p className="text-sm text-slate-200">
-                No plano Essencial ficam ativos os graficos executivos base (agenda, financeiro, marketing e operacao). No Pro/Enterprise entram CAC, LTV, Payback, forecast e granularidade por canal/profissional.
+                No plano Start ficam ativos os graficos executivos base (agenda, financeiro, marketing e operacao). No Pro/Enterprise entram CAC, LTV, Payback, forecast e granularidade por canal/profissional.
               </p>
             </Panel>
           </section>

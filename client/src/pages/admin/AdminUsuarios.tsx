@@ -83,7 +83,7 @@ const planColors: Record<string, string> = {
 };
 
 const planLabels: Record<string, string> = {
-  essencial: "Essencial (Start)",
+  essencial: "Start",
   pro: "Pro",
   enterprise: "Enterprise",
 };
@@ -456,7 +456,7 @@ export default function AdminUsuarios() {
                         <SelectItem value="essencial">
                           <div className="flex items-center gap-2">
                             <Zap className="h-4 w-4 text-emerald-400" />
-                            Essencial
+                            Start
                           </div>
                         </SelectItem>
                         <SelectItem value="pro">
@@ -592,7 +592,7 @@ export default function AdminUsuarios() {
 
           <Card className="bg-card/50 border-border/50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-emerald-400">Essencial</CardTitle>
+              <CardTitle className="text-sm font-medium text-emerald-400">Start</CardTitle>
               <Zap className="h-4 w-4 text-emerald-400" />
             </CardHeader>
             <CardContent>
@@ -640,7 +640,7 @@ export default function AdminUsuarios() {
                 <TableRow>
                   <TableHead>Funcao</TableHead>
                   <TableHead>Plano Minimo</TableHead>
-                  <TableHead>Essencial</TableHead>
+                  <TableHead>Start</TableHead>
                   <TableHead>Pro</TableHead>
                   <TableHead>Enterprise</TableHead>
                 </TableRow>
@@ -708,7 +708,7 @@ export default function AdminUsuarios() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos Planos</SelectItem>
-                    <SelectItem value="essencial">Essencial</SelectItem>
+                    <SelectItem value="essencial">Start</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
@@ -777,7 +777,7 @@ export default function AdminUsuarios() {
                             <SelectItem value="essencial">
                               <div className="flex items-center gap-2">
                                 <Zap className="h-4 w-4 text-emerald-400" />
-                                Essencial
+                                Start
                               </div>
                             </SelectItem>
                             <SelectItem value="pro">
@@ -866,7 +866,7 @@ export default function AdminUsuarios() {
                             <DropdownMenuLabel className="text-xs text-muted-foreground">Alterar Plano</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleUpdatePlan(user.id, "essencial")}>
                               <Zap className="h-4 w-4 mr-2 text-emerald-400" />
-                              Essencial
+                              Start
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleUpdatePlan(user.id, "pro")}>
                               <Crown className="h-4 w-4 mr-2 text-amber-400" />

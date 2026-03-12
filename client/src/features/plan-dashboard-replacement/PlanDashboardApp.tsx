@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo, KeyboardEvent, MouseEvent, useDeferredValue, startTransition } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo, KeyboardEvent, MouseEvent, useDeferredValue, startTransition, type ChangeEvent } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { Bell, CircleHelp, Menu, Moon, Settings, Sun, X } from 'lucide-react';
+import { Bell, Camera, CircleHelp, Menu, Moon, Settings, Sun, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,10 +19,11 @@ import { translateDashboardText, useTranslation } from './i18n';
 import { resolveKpiMeta, type KpiMeta, type KpiSourceMode } from './utils/kpiMeta';
 import './scoped.css';
 
-type Theme = 'dark' | 'light';
+type Theme = 'dark' | 'light' | 'night';
 type Lang = 'PT' | 'EN' | 'ES';
 type Plan = 'ESSENTIAL' | 'PRO' | 'ENTERPRISE';
 type NotificationMode = 'all' | 'critical' | 'off';
+type VisualScale = 'normal' | 'large' | 'xl';
 type NotificationEntry = {
   id: string;
   badgeType: '' | 'danger' | 'info' | 'success';
@@ -32,6 +33,13 @@ type NotificationEntry = {
   time: string;
   severityScore: number;
   auto?: boolean;
+};
+
+type DashboardProfile = {
+  name: string;
+  email: string;
+  phone: string;
+  avatar: string;
 };
 
 function toDashboardLang(language: Language): Lang {
@@ -56,7 +64,7 @@ function toDashboardPlan(plan: string | null | undefined): Plan {
 function planLabel(plan: Plan): string {
   if (plan === 'ENTERPRISE') return 'Enterprise';
   if (plan === 'PRO') return 'Pro';
-  return 'Essential';
+  return 'Start';
 }
 
 function getExplainActionLabel(language: Language) {
@@ -118,13 +126,13 @@ function resolveExportRole(user: unknown): string {
 
 const sidebarMenus: Record<Plan, { items: string[] }> = {
   ESSENTIAL: { items: ['Visão CEO', 'Agenda & No-Show', 'Financeiro Executivo', 'Marketing & Captação', 'Operação & Experiência'] },
-  PRO: { items: ['Visão CEO', 'War Room', 'Financeiro Avançado', 'Agenda/Otimização', 'Marketing/Unit Economics', 'Integrações', 'Operação & Experiência', 'Equipe'] },
-  ENTERPRISE: { items: ['Visão CEO', 'War Room', 'Financeiro — Investidor', 'Agenda/Otimização', 'Marketing/Unit Economics', 'Multi-Unidade', 'Integrações', 'Operação & Experiência', 'Equipe', 'Governança'] },
+  PRO: { items: ['Visão CEO', 'Financeiro Avançado', 'Agenda/No-Show', 'Marketing', 'Integrações', 'Operação & Experiência', 'Equipe'] },
+  ENTERPRISE: { items: ['Visão CEO', 'Financeiro — Investidor', 'Agenda/No-Show', 'Marketing', 'Multi-Unidade', 'Integrações', 'Operação & Experiência', 'Equipe', 'Governança'] },
 };
 
 const i18n: Record<Lang, Record<string, string>> = {
   PT: {
-    painelEssencial: 'Painel Essencial', painelPro: 'Painel Pro', painelEnterprise: 'Painel Enterprise',
+    painelEssencial: 'Painel Start', painelPro: 'Painel Pro', painelEnterprise: 'Painel Enterprise',
     subtitleEssencial: 'Dashboard executivo para clínicas em estruturação',
     subtitlePro: 'Otimização inteligente por profissional, serviço e canal',
     subtitleEnterprise: 'Inteligência de rede multi-unidade para investidores',
@@ -136,7 +144,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     pdfGenerating: 'Gerando PDF...',
   },
   EN: {
-    painelEssencial: 'Essential Panel', painelPro: 'Pro Panel', painelEnterprise: 'Enterprise Panel',
+    painelEssencial: 'Start Panel', painelPro: 'Pro Panel', painelEnterprise: 'Enterprise Panel',
     subtitleEssencial: 'Executive dashboard for clinics in structuring',
     subtitlePro: 'Smart optimization by professional, service and channel',
     subtitleEnterprise: 'Multi-unit network intelligence for investors',
@@ -148,7 +156,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     pdfGenerating: 'Generating PDF...',
   },
   ES: {
-    painelEssencial: 'Panel Esencial', painelPro: 'Panel Pro', painelEnterprise: 'Panel Enterprise',
+    painelEssencial: 'Panel Start', painelPro: 'Panel Pro', painelEnterprise: 'Panel Enterprise',
     subtitleEssencial: 'Dashboard ejecutivo para clínicas en estructuración',
     subtitlePro: 'Optimización inteligente por profesional, servicio y canal',
     subtitleEnterprise: 'Inteligencia de red multi-unidad para inversores',
@@ -424,12 +432,130 @@ const HelpPanel = memo(({ onClose }: { onClose: () => void }) => (
       <div className="overlay-body">
         <div className="help-section"><h4>Filtros</h4><p>Use os filtros globais para segmentar KPIs e gráficos por período, canal, profissional, procedimento, unidade ou severidade.</p></div>
         <div className="help-section"><h4>Drill-Down</h4><p>Clique em qualquer barra ou segmento nos gráficos para filtrar automaticamente. Um segundo clique desfaz o filtro.</p></div>
-        <div className="help-section"><h4>Planos</h4><p><strong>Essential:</strong> 5 módulos básicos.</p><p><strong>Pro:</strong> 8 módulos com War Room, Heatmaps e Unit Economics.</p><p><strong>Enterprise:</strong> 10 módulos com Valuation, Multi-Unidade e Governança.</p></div>
+        <div className="help-section"><h4>Planos</h4><p><strong>Essential:</strong> 5 módulos básicos.</p><p><strong>Pro:</strong> 7 módulos com alertas, heatmaps e unit economics.</p><p><strong>Enterprise:</strong> 9 módulos com valuation, multi-unidade e governança.</p></div>
         <div className="help-section"><h4>Exportação</h4><p><strong>CSV:</strong> Dados tabelados filtrados. <strong>PDF:</strong> Relatório visual com branding GLX para stakeholders.</p></div>
       </div>
     </div>
   </div>
 ));
+
+const ProfilePanel = memo(({
+  onClose,
+  profile,
+  onSave,
+}: {
+  onClose: () => void;
+  profile: DashboardProfile;
+  onSave: (next: DashboardProfile) => void;
+}) => {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState<DashboardProfile>(profile);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDraft(profile);
+  }, [profile]);
+
+  const handleFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDraft((prev) => ({
+        ...prev,
+        avatar: typeof reader.result === 'string' ? reader.result : prev.avatar,
+      }));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    onSave({
+      ...draft,
+      name: draft.name.trim() || t('Cliente'),
+      email: draft.email.trim(),
+      phone: draft.phone.trim(),
+    });
+    onClose();
+  }, [draft, onClose, onSave]);
+
+  return (
+    <div className="overlay-backdrop" onClick={onClose}>
+      <div className="overlay-panel" onClick={(e) => e.stopPropagation()} style={{ width: 460 }}>
+        <div className="overlay-header">
+          <h3>{t('Editar perfil')}</h3>
+          <button className="overlay-close" onClick={onClose} aria-label={t('Fechar')}><X size={18} /></button>
+        </div>
+        <div className="overlay-body">
+          <div className="settings-group profile-editor">
+            <div className="profile-editor-avatar-row">
+              <button
+                type="button"
+                className="profile-avatar-button"
+                onClick={() => fileRef.current?.click()}
+                aria-label={t('Alterar foto de perfil')}
+              >
+                {draft.avatar ? (
+                  <img src={draft.avatar} alt={draft.name || 'Perfil'} className="profile-avatar-image" />
+                ) : (
+                  <UserCircle2 size={56} />
+                )}
+                <span className="profile-avatar-edit-badge">
+                  <Camera size={14} />
+                </span>
+              </button>
+              <div className="profile-editor-avatar-copy">
+                <strong>{t('Foto de perfil')}</strong>
+                <p>{t('Clique no ícone para enviar outra imagem.')}</p>
+              </div>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+            <div className="profile-editor-grid">
+              <label className="profile-field">
+                <span>{t('Nome')}</span>
+                <input
+                  className="filter-select profile-input"
+                  value={draft.name}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder={t('Nome do usuário')}
+                />
+              </label>
+              <label className="profile-field">
+                <span>{t('E-mail')}</span>
+                <input
+                  className="filter-select profile-input"
+                  type="email"
+                  value={draft.email}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder={t('email@empresa.com')}
+                />
+              </label>
+              <label className="profile-field">
+                <span>{t('Telefone')}</span>
+                <input
+                  className="filter-select profile-input"
+                  value={draft.phone}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))}
+                  placeholder={t('(11) 99999-9999')}
+                />
+              </label>
+            </div>
+            <div className="profile-editor-actions">
+              <button type="button" className="topbar-btn text-btn" onClick={onClose}>{t('Cancelar')}</button>
+              <button type="button" className="topbar-btn export-pdf" onClick={handleSubmit}>{t('Salvar perfil')}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 function Toast({ message, onDone }: { message: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
@@ -488,6 +614,41 @@ const SettingsPanelWithNotifications = memo(({ onClose, theme, setTheme, lang, s
   </div>
 ));
 
+const SettingsPanelAdvanced = memo(({
+  onClose,
+  theme,
+  setTheme,
+  lang,
+  setLang,
+  notificationMode,
+  setNotificationMode,
+  visualScale,
+  setVisualScale,
+}: {
+  onClose: () => void;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  notificationMode: NotificationMode;
+  setNotificationMode: (mode: NotificationMode) => void;
+  visualScale: VisualScale;
+  setVisualScale: (scale: VisualScale) => void;
+}) => (
+  <div className="overlay-backdrop" onClick={onClose}>
+    <div className="overlay-panel" onClick={e => e.stopPropagation()} style={{ width: 380 }}>
+      <div className="overlay-header"><h3>{translateDashboardText('Configurações', toAppLanguage(lang))}</h3><button className="overlay-close" onClick={onClose} aria-label={translateDashboardText('Fechar', toAppLanguage(lang))}><X size={18} /></button></div>
+      <div className="overlay-body">
+        <div className="settings-group"><label>{translateDashboardText('Tema', toAppLanguage(lang))}</label><div className="selector-row"><button className={`selector-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>{translateDashboardText('Escuro', toAppLanguage(lang))}</button><button className={`selector-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>{translateDashboardText('Claro', toAppLanguage(lang))}</button><button className={`selector-btn ${theme === 'night' ? 'active' : ''}`} onClick={() => setTheme('night')}>{translateDashboardText('Luz noturna', toAppLanguage(lang))}</button></div></div>
+        <div className="settings-group"><label>{translateDashboardText('Leitura e gráficos', toAppLanguage(lang))}</label><div className="selector-row"><button className={`selector-btn ${visualScale === 'normal' ? 'active' : ''}`} onClick={() => setVisualScale('normal')}>{translateDashboardText('Padrão', toAppLanguage(lang))}</button><button className={`selector-btn ${visualScale === 'large' ? 'active' : ''}`} onClick={() => setVisualScale('large')}>{translateDashboardText('Grande', toAppLanguage(lang))}</button><button className={`selector-btn ${visualScale === 'xl' ? 'active' : ''}`} onClick={() => setVisualScale('xl')}>{translateDashboardText('Extra', toAppLanguage(lang))}</button></div></div>
+        <div className="settings-group"><label>{translateDashboardText('Idioma', toAppLanguage(lang))}</label><div className="selector-row">{(['PT', 'EN', 'ES'] as Lang[]).map(l => <button key={l} className={`selector-btn ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>{l}</button>)}</div></div>
+        <div className="settings-group"><label>{translateDashboardText('Refresh automático', toAppLanguage(lang))}</label><select className="filter-select" style={{ width: '100%' }}><option>{translateDashboardText('Desligado', toAppLanguage(lang))}</option><option>{translateDashboardText('30 segundos', toAppLanguage(lang))}</option><option>{translateDashboardText('1 minuto', toAppLanguage(lang))}</option><option>{translateDashboardText('5 minutos', toAppLanguage(lang))}</option></select></div>
+        <div className="settings-group"><label>{translateDashboardText('Notificações', toAppLanguage(lang))}</label><select className="filter-select" style={{ width: '100%' }} value={notificationMode} onChange={(event) => setNotificationMode(event.target.value as NotificationMode)}><option value="all">{translateDashboardText('Ativadas', toAppLanguage(lang))}</option><option value="critical">{translateDashboardText('Apenas críticas', toAppLanguage(lang))}</option><option value="off">{translateDashboardText('Desativadas', toAppLanguage(lang))}</option></select></div>
+      </div>
+    </div>
+  </div>
+));
+
 function PlanDashboardApp() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
@@ -508,9 +669,15 @@ function PlanDashboardApp() {
   const [activeMenuItem, setActiveMenuItem] = useState(0);
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'dark';
-    return window.localStorage.getItem('glx-dashboard-theme') === 'light' ? 'light' : 'dark';
+    const stored = window.localStorage.getItem('glx-dashboard-theme');
+    return stored === 'light' || stored === 'night' || stored === 'dark' ? stored : 'dark';
   });
   const deferredTheme = useDeferredValue(theme);
+  const [visualScale, setVisualScale] = useState<VisualScale>(() => {
+    if (typeof window === 'undefined') return 'normal';
+    const stored = window.localStorage.getItem('glx-dashboard-visual-scale');
+    return stored === 'large' || stored === 'xl' || stored === 'normal' ? stored : 'normal';
+  });
   const [lang, setLang] = useState<Lang>(() => toDashboardLang(language));
   const [notificationMode, setNotificationMode] = useState<NotificationMode>(() => {
     if (typeof window === 'undefined') return 'all';
@@ -523,6 +690,7 @@ function PlanDashboardApp() {
   const [removedNotifs, setRemovedNotifs] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [pdfExportMode, setPdfExportMode] = useState<"executive" | "investor" | null>(null);
@@ -586,9 +754,34 @@ function PlanDashboardApp() {
   const titleKey = activePlan === 'ESSENTIAL' ? 'painelEssencial' : activePlan === 'PRO' ? 'painelPro' : 'painelEnterprise';
   const subtitleKey = activePlan === 'ESSENTIAL' ? 'subtitleEssencial' : activePlan === 'PRO' ? 'subtitlePro' : 'subtitleEnterprise';
   const activeFilterCount = [filters.channel, filters.professional, filters.procedure, filters.status, filters.unit, filters.severity].filter(Boolean).length;
-  const profileName = (user as any)?.name || 'Cliente';
-  const profileEmail = (user as any)?.email || '';
-  const profileRole = String((user as any)?.role || 'cliente').toUpperCase();
+  const [profile, setProfile] = useState<DashboardProfile>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem('glx-dashboard-profile');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as Partial<DashboardProfile>;
+          return {
+            name: parsed.name || (user as any)?.name || 'Cliente',
+            email: parsed.email || (user as any)?.email || '',
+            phone: parsed.phone || '',
+            avatar: parsed.avatar || '',
+          };
+        } catch {
+          // ignore malformed storage
+        }
+      }
+    }
+
+    return {
+      name: (user as any)?.name || 'Cliente',
+      email: (user as any)?.email || '',
+      phone: '',
+      avatar: '',
+    };
+  });
+  const profileName = profile.name || 'Cliente';
+  const profileEmail = profile.email || '';
+  const profilePhone = profile.phone || '';
   const exportRole = useMemo(() => resolveExportRole(user), [user]);
   const exportPolicy = useMemo(
     () => getDashboardExportPolicy(activePlan, exportRole, activeMenuItem),
@@ -622,8 +815,22 @@ function PlanDashboardApp() {
   }, [notificationMode]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('glx-dashboard-visual-scale', visualScale);
+  }, [visualScale]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('glx-dashboard-profile', JSON.stringify(profile));
+  }, [profile]);
+
+  useEffect(() => {
     appRootRef.current?.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    appRootRef.current?.setAttribute('data-visual-scale', visualScale);
+  }, [visualScale]);
 
   useEffect(() => {
     setActivePlan(prev => (prev === userPlan ? prev : userPlan));
@@ -655,7 +862,7 @@ function PlanDashboardApp() {
     translateRenderedDashboard(document.querySelector('.glx-plan-dashboard-root'), language);
     translateRenderedDashboard(contentRef.current, language);
     translateRenderedDashboard(exportContentRef.current, language);
-  }, [language, activeMenuItem, activePlan, dashboardQuery.data, resolvedAppointments, filters, pdfExportMode, selectedKpiMeta, showHelp, showNotifications, showSettings]);
+  }, [language, activeMenuItem, activePlan, dashboardQuery.data, resolvedAppointments, filters, pdfExportMode, selectedKpiMeta, showHelp, showNotifications, showSettings, showProfileEditor]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -715,6 +922,18 @@ function PlanDashboardApp() {
       setTheme(next);
     });
   }, [theme]);
+
+  const handleMenuSelect = useCallback((idx: number) => {
+    if (idx === activeMenuItem) {
+      if (mobileSidebarOpen) setMobileSidebarOpen(false);
+      return;
+    }
+
+    startTransition(() => {
+      setActiveMenuItem(idx);
+      if (mobileSidebarOpen) setMobileSidebarOpen(false);
+    });
+  }, [activeMenuItem, mobileSidebarOpen]);
 
   const handleRefresh = useCallback(() => {
     setRefreshKey(k => k + 1);
@@ -910,7 +1129,7 @@ function PlanDashboardApp() {
   }
 
   return (
-    <div ref={appRootRef} className="glx-plan-dashboard-root app-shell" data-theme={theme} data-lang={language}>
+    <div ref={appRootRef} className="glx-plan-dashboard-root app-shell" data-theme={theme} data-lang={language} data-visual-scale={visualScale}>
       <div className="dashboard-ambient" aria-hidden="true">
         <span className="ambient-grid" />
         <span className="ambient-orb ambient-orb-a" />
@@ -919,8 +1138,9 @@ function PlanDashboardApp() {
       </div>
       {mobileSidebarOpen && <button type="button" className="sidebar-backdrop" aria-label={translateText('Fechar menu')} onClick={() => setMobileSidebarOpen(false)} />}
       {showNotifications && <NotificationPanel notifications={visibleNotifications} onClose={() => setShowNotifications(false)} removedNotifs={removedNotifs} onToggleRemove={handleToggleNotif} />}
-      {showSettings && <SettingsPanelWithNotifications onClose={() => setShowSettings(false)} theme={theme} setTheme={handleSetTheme} lang={lang} setLang={handleSetLang} notificationMode={notificationMode} setNotificationMode={setNotificationMode} />}
+      {showSettings && <SettingsPanelAdvanced onClose={() => setShowSettings(false)} theme={theme} setTheme={handleSetTheme} lang={lang} setLang={handleSetLang} notificationMode={notificationMode} setNotificationMode={setNotificationMode} visualScale={visualScale} setVisualScale={setVisualScale} />}
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
+      {showProfileEditor && <ProfilePanel onClose={() => setShowProfileEditor(false)} profile={profile} onSave={(next) => { setProfile(next); setToastMsg(translateText('Perfil atualizado!')); }} />}
       {translatedKpiMeta && <KpiExplainPanel meta={translatedKpiMeta} onClose={() => setSelectedKpiMeta(null)} />}
       {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg('')} />}
 
@@ -931,13 +1151,33 @@ function PlanDashboardApp() {
         </div>
         <nav className="sidebar-nav">
           {menu.items.map((item, idx) => (
-            <div key={idx} className={`sidebar-item ${activeMenuItem === idx ? 'active' : ''}`} onClick={() => setActiveMenuItem(idx)}>{translateDashboardText(item, language)}</div>
+            <button
+              key={idx}
+              type="button"
+              className={`sidebar-item ${activeMenuItem === idx ? 'active' : ''}`}
+              onClick={() => handleMenuSelect(idx)}
+            >
+              {translateDashboardText(item, language)}
+            </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <button type="button" className="sidebar-profile-trigger" onClick={() => setShowProfileEditor(true)} aria-label="Editar perfil">
+            <span className="sidebar-profile-avatar">
+              {profile.avatar ? (
+                <img src={profile.avatar} alt={profileName} className="sidebar-profile-avatar-image" />
+              ) : (
+                <UserCircle2 size={44} />
+              )}
+            </span>
+            <span className="sidebar-profile-avatar-badge">
+              <Camera size={12} />
+            </span>
+          </button>
           <div className="sidebar-profile-label">{t.perfil}</div>
-          <div className="sidebar-profile-name">{profileRole}</div>
+          <div className="sidebar-profile-name">{profileName}</div>
           <div className="sidebar-profile-email">{profileEmail || profileName}</div>
+          {profilePhone ? <div className="sidebar-profile-phone">{profilePhone}</div> : null}
           <div style={{ marginTop: 14 }}>
             <div className="selector-row-label">{t.idioma}</div>
             <select className="filter-select" style={{ width: '100%' }} value={lang} onChange={e => handleSetLang(e.target.value as Lang)}>
@@ -948,9 +1188,9 @@ function PlanDashboardApp() {
           </div>
           <div style={{ marginTop: 12 }}>
             <div className="selector-row-label">{translateText('Tema').toUpperCase()}</div>
-            <div className="theme-toggle-wrapper" onClick={() => handleSetTheme(theme === 'dark' ? 'light' : 'dark')} style={{ cursor: 'pointer' }}>
+            <div className="theme-toggle-wrapper" onClick={() => handleSetTheme(theme === 'light' ? 'dark' : 'light')} style={{ cursor: 'pointer' }}>
               <span className="theme-toggle-icon" aria-hidden="true">
-                {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
+                {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}
               </span>
               <div className={`theme-toggle-track ${theme === 'light' ? 'light' : ''}`}>
                 <div className="theme-toggle-thumb" />
@@ -1055,21 +1295,23 @@ function PlanDashboardApp() {
           </div>
         )}
         <main className="content" ref={contentRef} key={refreshKey} onClickCapture={handleKpiInteraction} onKeyDownCapture={handleKpiInteraction}>
-          {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
-          {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
-          {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} visualScale={visualScale} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} visualScale={visualScale} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
+          {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} visualScale={visualScale} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
         </main>
 
         {/* Hidden Container for Multi-Tab Export */}
-        <div ref={exportContentRef} style={{ position: 'absolute', left: '-99999px', top: 0, width: 1440, visibility: 'hidden', pointerEvents: 'none' }}>
-          {menu.items.map((tabName, idx) => (
-            <div key={idx} className="pdf-export-section" data-title={translateDashboardText(tabName, language)}>
-              {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
-              {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
-              {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={idx} theme="light" filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
-            </div>
-          ))}
-        </div>
+        {pdfLoading ? (
+          <div ref={exportContentRef} style={{ position: 'absolute', left: '-99999px', top: 0, width: 1440, visibility: 'hidden', pointerEvents: 'none' }}>
+            {menu.items.map((tabName, idx) => (
+              <div key={idx} className="pdf-export-section" data-title={translateDashboardText(tabName, language)}>
+                {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={idx} theme="light" visualScale={visualScale} filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
+                {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={idx} theme="light" visualScale={visualScale} filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
+                {activePlan === 'ENTERPRISE' && <EnterpriseDashboard lang={lang} activeTab={idx} theme="light" visualScale={visualScale} filters={filters} onFiltersChange={() => { }} appointments={resolvedAppointments} />}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

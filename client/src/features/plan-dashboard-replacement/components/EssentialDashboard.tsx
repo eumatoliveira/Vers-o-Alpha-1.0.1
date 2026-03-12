@@ -12,7 +12,8 @@ import {
 interface Props {
   activeTab: number;
   lang?: "PT" | "EN" | "ES";
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'night';
+  visualScale: 'normal' | 'large' | 'xl';
   filters: Filters;
   onFiltersChange: (f: Filters) => void;
   appointments?: Appointment[];
@@ -42,11 +43,11 @@ function badgeForPriority(priority: Priority) {
   return { label: 'OK', className: 'green' };
 }
 
-function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang = "PT", appointments }: Props) {
+function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersChange, lang = "PT", appointments }: Props) {
   const { t } = useTranslation();
   const { formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
   const fmt = useCallback((value: number) => formatCompactMoney(value), [formatCompactMoney]);
-  const ct = useMemo(() => getChartTheme(theme), [theme]);
+  const ct = useMemo(() => getChartTheme(theme, visualScale), [theme, visualScale]);
   const allData = useMemo(() => appointments ?? getAllAppointments(), [appointments]);
   const filterOptions = useMemo(() => getFilterOptions(allData), [allData]);
   const filtered = useMemo(() => applyFilters(allData, filters), [allData, filters]);
@@ -129,18 +130,18 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
     const leadTime = current?.leadTimeDays ?? 0;
     const cancelTrendDown = previous ? cancelNotice < previous.cancelNoticeRate : false;
 
-    const classifyNoShow = (v: number): Priority => (v > 15 ? 'P1' : v >= 10 ? 'P2' : v >= 8 ? 'P3' : 'OK');
-    const classifyOccupancy = (v: number): Priority => (v < 60 ? 'P1' : v < 70 ? 'P2' : v < 75 ? 'P3' : 'OK');
-    const classifyConfirm = (v: number): Priority => (v < 70 ? 'P2' : v < 80 ? 'P3' : 'OK');
+    const classifyNoShow = (v: number): Priority => (v > 15 ? 'P1' : v >= 12 ? 'P2' : v >= 8 ? 'P3' : 'OK');
+    const classifyOccupancy = (v: number): Priority => (v < 65 ? 'P1' : v < 72 ? 'P2' : v < 80 ? 'P3' : 'OK');
+    const classifyConfirm = (v: number): Priority => (v < 70 ? 'P1' : v < 78 ? 'P2' : v < 85 ? 'P3' : 'OK');
     const classifyCancelNotice = (v: number): Priority => (v < 40 && cancelTrendDown ? 'P2' : 'OK');
     const classifyChannel = (v: number): Priority => (v > 35 ? 'P1' : v > 20 ? 'P2' : 'OK');
     const classifyConsult = (v: number): Priority => (v < 60 ? 'P1' : v < 70 ? 'P2' : v < 80 ? 'P3' : 'OK');
     const classifyLead = (v: number): Priority => (v > 7 ? 'P1' : v > 5 ? 'P2' : 'OK');
 
     return [
-      { id: '01', kpi: 'Taxa de No-Show (%)', value: `${noShow.toFixed(1)}%`, meta: '< 10%', baseN: `${current?.total ?? kpis.total}`, priority: classifyNoShow(noShow), action: 'Drill-down por canal de origem' },
-      { id: '02', kpi: 'Taxa de Ocupação (%)', value: `${occupancy.toFixed(1)}%`, meta: '> 75%', baseN: `${current?.total ?? kpis.total}`, priority: classifyOccupancy(occupancy), action: 'Ajustar capacidade por profissional/turno' },
-      { id: '03', kpi: 'Confirmações Realizadas (%)', value: `${confirmations.toFixed(1)}%`, meta: '> 80%', baseN: `${current?.total ?? kpis.total}`, priority: classifyConfirm(confirmations), action: 'Automatizar confirmações (WhatsApp)' },
+      { id: '01', kpi: 'Taxa de No-Show (%)', value: `${noShow.toFixed(1)}%`, meta: '< 8%', baseN: `${current?.total ?? kpis.total}`, priority: classifyNoShow(noShow), action: 'Drill-down por canal de origem' },
+      { id: '02', kpi: 'Taxa de Ocupação (%)', value: `${occupancy.toFixed(1)}%`, meta: '> 80%', baseN: `${current?.total ?? kpis.total}`, priority: classifyOccupancy(occupancy), action: 'Ajustar capacidade por profissional/turno' },
+      { id: '03', kpi: 'Confirmações Realizadas (%)', value: `${confirmations.toFixed(1)}%`, meta: '> 85%', baseN: `${current?.total ?? kpis.total}`, priority: classifyConfirm(confirmations), action: 'Automatizar confirmações (WhatsApp)' },
       { id: '04', kpi: 'Cancelamentos com Aviso (%)', value: `${cancelNotice.toFixed(1)}%`, meta: '> 60%', baseN: `${kpis.canceled}`, priority: classifyCancelNotice(cancelNotice), action: 'IA/NLP para motivo de cancelamento' },
       { id: '05', kpi: 'Agendamentos por Canal', value: `${Math.max(0, worstChannelDrop.dropPct).toFixed(0)}% (${worstChannelDrop.name})`, meta: 'Meta por canal', baseN: `${kpis.leads}`, priority: classifyChannel(worstChannelDrop.dropPct), action: 'Reagir a queda >20% por canal' },
       { id: '06', kpi: 'Consultas Realizadas / Semana', value: `${consultMeta.toFixed(0)}%`, meta: '> 80%', baseN: `${current?.weeklyTarget ?? 0}`, priority: classifyConsult(consultMeta), action: 'Recuperar agenda semanal' },
@@ -191,19 +192,19 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
     if (!current) return [];
     const grossMeta = current.gross * 1.12;
     const d20Priority: Priority = current.d20ProgressPct < 80 ? 'P2' : 'OK';
-    const netPriority: Priority = current.netPctGross < 82 ? 'P1' : current.netPctGross < 88 ? 'P2' : 'OK';
-    const marginPriority: Priority = current.marginPct < 12 ? 'P1' : current.marginPct < 15 ? 'P2' : current.marginPct < 18 ? 'P3' : 'OK';
+    const netPriority: Priority = current.netPctGross < 85 ? 'P1' : current.netPctGross < 92 ? 'P2' : 'OK';
+    const marginPriority: Priority = current.marginPct < 12 ? 'P1' : current.marginPct < 16 ? 'P2' : current.marginPct < 20 ? 'P3' : 'OK';
     const ticketDrop = financePrev ? ((financePrev.ticketAvg - current.ticketAvg) / Math.max(financePrev.ticketAvg, 1)) * 100 : 0;
     const ticketPriority: Priority = ticketDrop > 10 ? 'P2' : 'OK';
-    const inadPriority: Priority = current.delinquencyPct > 8 ? 'P1' : current.delinquencyPct > 5 ? 'P2' : 'OK';
-    const fixedPriority: Priority = current.fixedPct > 60 ? 'P1' : current.fixedPct > 50 ? 'P2' : 'OK';
+    const inadPriority: Priority = current.delinquencyPct > 8 ? 'P1' : current.delinquencyPct > 4 ? 'P2' : 'OK';
+    const fixedPriority: Priority = current.fixedPct > 60 ? 'P1' : current.fixedPct > 45 ? 'P2' : 'OK';
     return [
       { id:'01', kpi:'Faturamento Bruto Mensal', value: fmt(current.gross), meta: fmt(grossMeta), baseN:String(current.receiptsCount), priority:d20Priority, action:'D20 Rule: projetar risco se <80% no dia 20' },
       { id:'02', kpi:'Receita Líquida', value: `${current.netPctGross.toFixed(1)}% do bruto`, meta:'> 92% do bruto', baseN:fmt(current.gross), priority:netPriority, action:'Monitorar glosas, estornos e inadimplência' },
-      { id:'03', kpi:'Margem Líquida (%)', value: `${current.marginPct.toFixed(1)}%`, meta:'> 18%', baseN:fmt(current.net), priority:marginPriority, action:'Comparar benchmark da especialidade' },
+      { id:'03', kpi:'Margem Líquida (%)', value: `${current.marginPct.toFixed(1)}%`, meta:'> 20%', baseN:fmt(current.net), priority:marginPriority, action:'Comparar benchmark da especialidade' },
       { id:'04', kpi:moneyTitle('Ticket Médio'), value: fmt(current.ticketAvg), meta: fmt(current.ticketBenchmark), baseN:String(current.consultations), priority:ticketPriority, action:'Segmentar por procedimento' },
-      { id:'05', kpi:'Inadimplência (%)', value: `${current.delinquencyPct.toFixed(1)}%`, meta:'< 5%', baseN:fmt(current.gross), priority:inadPriority, action:'Cobrança ativa e política de recebíveis' },
-      { id:'06', kpi:'Despesas Fixas / Receita (%)', value: `${current.fixedPct.toFixed(1)}%`, meta:'< 50%', baseN:fmt(current.net), priority:fixedPriority, action:'Revisar estrutura fixa e contratos' },
+      { id:'05', kpi:'Inadimplência (%)', value: `${current.delinquencyPct.toFixed(1)}%`, meta:'< 4%', baseN:fmt(current.gross), priority:inadPriority, action:'Cobrança ativa e política de recebíveis' },
+      { id:'06', kpi:'Despesas Fixas / Receita (%)', value: `${current.fixedPct.toFixed(1)}%`, meta:'< 45%', baseN:fmt(current.net), priority:fixedPriority, action:'Revisar estrutura fixa e contratos' },
     ];
   }, [financeCurrent, financePrev]);
   const cashProjection = useMemo(() => {
@@ -317,14 +318,14 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
   }, [opsCurrent]);
   const opsRules = useMemo(() => {
     if (!opsCurrent) return [];
-    const npsPriority: Priority = opsCurrent.nps < 7.5 ? 'P1' : 'OK';
-    const waitPriority: Priority = opsCurrent.waitMinutes > 25 ? 'P1' : opsCurrent.waitMinutes > 15 ? 'P2' : 'OK';
-    const returnPriority: Priority = opsCurrent.return90d < 20 ? 'P1' : opsCurrent.return90d < 30 ? 'P2' : 'OK';
+    const npsPriority: Priority = opsCurrent.nps < 7.5 ? 'P1' : opsCurrent.nps < 8.5 ? 'P2' : 'OK';
+    const waitPriority: Priority = opsCurrent.waitMinutes > 25 ? 'P1' : opsCurrent.waitMinutes > 12 ? 'P2' : 'OK';
+    const returnPriority: Priority = opsCurrent.return90d < 25 ? 'P1' : opsCurrent.return90d < 40 ? 'P2' : 'OK';
     const slaPriority: Priority = opsCurrent.slaLeadHours > 4 ? 'P1' : opsCurrent.slaLeadHours > 2 ? 'P2' : 'OK';
     return [
-      { id:'01', kpi:'NPS Geral (0-10)', value: opsCurrent.nps.toFixed(1), meta:'> 8,0', baseN:String(opsCurrent.npsResponses), priority:npsPriority, action:'Coleta automática WhatsApp pós-consulta' },
-      { id:'02', kpi:'Tempo Médio de Espera (min)', value: `${opsCurrent.waitMinutes.toFixed(0)} min`, meta:'< 15 min', baseN:String(kpis.realized), priority:waitPriority, action:'Rebalancear agenda / encaixes' },
-      { id:'03', kpi:'Taxa de Retorno 90d (%)', value: `${opsCurrent.return90d.toFixed(1)}%`, meta:'> 35%', baseN:String(kpis.realized), priority:returnPriority, action:'Cohort 180d e rotina de recall' },
+      { id:'01', kpi:'NPS Geral (0-10)', value: opsCurrent.nps.toFixed(1), meta:'> 8,5', baseN:String(opsCurrent.npsResponses), priority:npsPriority, action:'Coleta automática WhatsApp pós-consulta' },
+      { id:'02', kpi:'Tempo Médio de Espera (min)', value: `${opsCurrent.waitMinutes.toFixed(0)} min`, meta:'< 12 min', baseN:String(kpis.realized), priority:waitPriority, action:'Rebalancear agenda / encaixes' },
+      { id:'03', kpi:'Taxa de Retorno 90d (%)', value: `${opsCurrent.return90d.toFixed(1)}%`, meta:'> 40%', baseN:String(kpis.realized), priority:returnPriority, action:'Cohort 180d e rotina de recall' },
       { id:'04', kpi:'SLA de Resposta ao Lead (h)', value: `${opsCurrent.slaLeadHours.toFixed(2)}h`, meta:'< 1h', baseN:String(opsCurrent.leadResponses), priority:slaPriority, action:'SLA por recepção / responsável' },
     ];
   }, [opsCurrent, kpis.realized]);
@@ -377,29 +378,6 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
       {/* ===== AGENDA ===== */}
       {activeTab === 1 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> {t('Agenda & No-Show')}</h2></div>
-        <div className="chart-card" style={{marginBottom: 16}}>
-          <div className="chart-card-header">
-            <span className="chart-card-title">P1/P2/P3 - Regra de Ação</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>P1: 24h | P2: 7 dias | P3: Monitorar</span>
-          </div>
-          <div className="chart-card-body" style={{ padding: 14 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10 }}>
-              {[
-                { key: 'P1', text: 'Ação em 24h', color: '#ef4444' },
-                { key: 'P2', text: 'Ação em 7 dias', color: '#eab308' },
-                { key: 'P3', text: 'Monitorar', color: '#3b82f6' },
-              ].map((item) => (
-                <div key={item.key} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, display: 'inline-block' }} />
-                    {item.key}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{item.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">Total Agendamentos</div><div className="overview-card-value">{kpis.total}</div></div>
           <div className="overview-card"><div className="overview-card-label">Realizadas</div><div className="overview-card-value">{kpis.realized}</div></div>
@@ -437,32 +415,6 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Drill-down de No-Show por Canal</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Identifica canais com maior no-show</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{...ct.chart,type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,barHeight:'58%',borderRadius:4}},colors:['#ef4444','#f97316','#eab308','#3b82f6','#22c55e','#64748b'],annotations:{xaxis:[{x:10,borderColor:'#f97316',strokeDashArray:4,label:{text:'Meta 10%',style:{color:'#fff',background:'#f97316'}}}]},legend:{show:false}}} series={[{name:'No-Show %',data:channelStatusBreakdown.map(c => ({ x: c.name, y: +c.noShowRate.toFixed(1) }))}]} type="bar" height={220}/>
           </div></div>
-        </div>
-        <div className="chart-card">
-          <div className="chart-card-header"><span className="chart-card-title">Tabela de Regras (P1/P2/P3)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Status e ação por KPI</span></div>
-          <div className="chart-card-body" style={{padding:12}}>
-            <table className="data-table">
-              <thead>
-                <tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Ação</th></tr>
-              </thead>
-              <tbody>
-                {agendaRules.map((row) => {
-                  const badge = badgeForPriority(row.priority);
-                  return (
-                    <tr key={row.id}>
-                      <td>{row.id}</td>
-                      <td>{row.kpi}</td>
-                      <td style={{fontWeight:700}}>{row.value}</td>
-                      <td>{row.meta}</td>
-                      <td>{row.baseN}</td>
-                      <td><span className={`chart-card-badge ${badge.className}`} style={{display:'inline-block'}}>{badge.label}</span></td>
-                      <td>{row.action}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </div>
       </>)}
       {/* ===== FINANCEIRO ===== */}
@@ -502,12 +454,6 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Posição de Caixa (R$)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Linha histórica + projeção 15d</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth' as const,width:[3,3]},colors:['#22c55e','#3b82f6'],xaxis:{...ct.xaxis,categories:[...cashProjection.historical.map(p=>p.label), ...cashProjection.projected.map(p=>p.label)]},annotations:{yaxis:[{y:0,borderColor:'#ef4444',strokeDashArray:4,label:{text:'Zero caixa',style:{color:'#fff',background:'#ef4444'}}}]},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'Caixa histórico',data:[...cashProjection.historical.map(p=>Math.round(p.cash)), ...cashProjection.projected.map(()=>null as any)]},{name:'Caixa projetado 15d',data:[...cashProjection.historical.map(()=>null as any), ...cashProjection.projected.map(p=>Math.round(p.cash))]}]} type="line" height={220}/>
           </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Tabela Financeira (P1/P2/P3)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Ações por regra de negócio</span></div><div className="chart-card-body" style={{padding:12}}>
-            <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Ação</th></tr></thead><tbody>
-              {financeRules.map((row) => { const badge = badgeForPriority(row.priority); return <tr key={row.id}><td>{row.id}</td><td>{row.kpi}</td><td style={{fontWeight:700}}>{row.value}</td><td>{row.meta}</td><td>{row.baseN}</td><td><span className={`chart-card-badge ${badge.className}`} style={{display:'inline-block'}}>{badge.label}</span></td><td>{row.action}</td></tr>; })}
-              <tr><td>07</td><td>{moneyTitle('Posição de Caixa')} (15d)</td><td style={{fontWeight:700}}>{fmt(cashProjection.projected[cashProjection.projected.length-1]?.cash ?? 0)}</td><td>Sempre positivo</td><td>Fluxo previsto</td><td><span className={`chart-card-badge ${badgeForPriority((cashProjection.projected.some(p=>p.cash<0)?'P1':'OK')).className}`} style={{display:'inline-block'}}>{badgeForPriority((cashProjection.projected.some(p=>p.cash<0)?'P1':'OK')).label}</span></td><td>Reforçar caixa se projeção negativa em qualquer semana</td></tr>
-            </tbody></table>
-          </div></div>
         </div>
       </>)}
       {/* ===== MARKETING ===== */}
@@ -538,11 +484,6 @@ function EssentialDashboard({ activeTab, theme, filters, onFiltersChange, lang =
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">05 ROI por Canal de Marketing (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Barra ordenada + semáforo</span></div><div className="chart-card-body">
             <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,borderRadius:4,distributed:true,barHeight:'58%'}},colors:marketingByChannel.map(c=>c.roi<0?'#ef4444':c.roi<200?'#eab308':'#22c55e'),xaxis:{...ct.xaxis},annotations:{xaxis:[{x:200,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 200%',style:{color:'#fff',background:'#22c55e'}}},{x:0,borderColor:'#ef4444',strokeDashArray:4,label:{text:'ROI negativo',style:{color:'#fff',background:'#ef4444'}}}]},legend:{show:false}}} series={[{name:'ROI %',data:[...marketingByChannel].sort((a,b)=>b.roi-a.roi).map(c=>({x:c.name,y:+c.roi.toFixed(0)}))}]} type="bar" height={240}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Tabela Marketing (P1/P2/P3)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Alertas e ações por KPI</span></div><div className="chart-card-body" style={{padding:12}}>
-            <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Ação</th></tr></thead><tbody>
-              {marketingRules.map((row) => { const badge = badgeForPriority(row.priority); return <tr key={row.id}><td>{row.id}</td><td>{row.kpi}</td><td style={{fontWeight:700}}>{row.value}</td><td>{row.meta}</td><td>{row.baseN}</td><td><span className={`chart-card-badge ${badge.className}`} style={{display:'inline-block'}}>{badge.label}</span></td><td>{row.action}</td></tr>; })}
-            </tbody></table>
           </div></div>
         </div>
       </>)}

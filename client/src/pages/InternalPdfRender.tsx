@@ -19,8 +19,8 @@ type Payload = {
 
 const planTabs: Record<Plan, string[]> = {
   ESSENTIAL: ["Visão CEO", "Agenda & No-Show", "Financeiro Executivo", "Marketing & Captação", "Operação & Experiência"],
-  PRO: ["Visão CEO", "War Room", "Financeiro Avançado", "Agenda/Otimização", "Marketing/Unit Economics", "Integrações", "Operação & Experiência", "Equipe"],
-  ENTERPRISE: ["Visão CEO", "War Room", "Financeiro — Investidor", "Agenda/Otimização", "Marketing/Unit Economics", "Multi-Unidade", "Integrações", "Operação & Experiência", "Equipe", "Governança"],
+  PRO: ["Visão CEO", "Financeiro Avançado", "Agenda/No-Show", "Marketing", "Integrações", "Operação & Experiência", "Equipe"],
+  ENTERPRISE: ["Visão CEO", "Financeiro — Investidor", "Agenda/No-Show", "Marketing", "Multi-Unidade", "Integrações", "Operação & Experiência", "Equipe", "Governança"],
 };
 
 function toPlan(plan: Payload["plan"]): Plan {
@@ -63,6 +63,7 @@ export default function InternalPdfRender() {
               lang={payload.language}
               activeTab={idx}
               theme="light"
+              visualScale="normal"
               filters={payload.filters}
               onFiltersChange={() => undefined}
               appointments={payload.appointments}
@@ -73,6 +74,7 @@ export default function InternalPdfRender() {
               lang={payload.language}
               activeTab={idx}
               theme="light"
+              visualScale="normal"
               filters={payload.filters}
               onFiltersChange={() => undefined}
               appointments={payload.appointments}
@@ -83,6 +85,7 @@ export default function InternalPdfRender() {
               lang={payload.language}
               activeTab={idx}
               theme="light"
+              visualScale="normal"
               filters={payload.filters}
               onFiltersChange={() => undefined}
               appointments={payload.appointments}

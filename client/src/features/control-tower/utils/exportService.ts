@@ -67,7 +67,7 @@ function buildPdf(params: ExportDashboardParams) {
   if (normalizedPlan === "essencial") {
     triggerUrlDownload(
       "/pdf-templates/GLX_Control_Tower_PDFESSENCIAL_Model.pdf",
-      `GLX_PDF_Essencial_${new Date().toISOString().slice(0, 10)}.pdf`,
+      `GLX_PDF_Start_${new Date().toISOString().slice(0, 10)}.pdf`,
     );
     return;
   }

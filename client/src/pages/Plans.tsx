@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "wouter";
 import { m } from "framer-motion";
-import { ArrowLeft, BarChart3, Building2, Check, Layers3, Shield, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, BarChart3, Building2, Check, Shield, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -83,7 +83,7 @@ const CONSULTORIA_PLANS: ConsultoriaPlan[] = [
 
 const CONTROL_TOWER_PLANS: ControlTowerPlan[] = [
   {
-    title: "Essencial",
+    title: "Start",
     summary:
       "Para clinicas em estruturacao que precisam de visibilidade clara para tomar as primeiras decisoes por dados.",
     bullets: [
@@ -102,7 +102,7 @@ const CONTROL_TOWER_PLANS: ControlTowerPlan[] = [
     title: "Pro",
     summary: "Para clinicas que querem granularidade por profissional, servico e canal.",
     bullets: [
-      "Tudo do Essencial +",
+      "Tudo do Start +",
       "Drill-down por medico e procedimento",
       "Simuladores: break-even, overbooking, mix",
       "Forecast de receita com IA (P10/P50/P90)",
@@ -141,29 +141,29 @@ function openCalendly() {
 function toneClasses(tone: ControlTowerPlan["tone"], featured?: boolean) {
   if (tone === "pro") {
     return {
-      card: "border-orange-400/40 bg-gradient-to-b from-orange-500/12 to-white/[0.02]",
-      icon: "bg-orange-500/12 text-orange-300 border-orange-400/25",
+      card: "border-orange-500/45 bg-[linear-gradient(180deg,rgba(255,115,0,0.14),rgba(10,10,10,0.92)_28%,rgba(10,10,10,0.98)_100%)] shadow-[0_0_0_1px_rgba(255,115,0,0.08),0_18px_50px_rgba(0,0,0,0.45)]",
+      icon: "bg-orange-500/10 text-orange-300 border-orange-500/30",
       accent: "text-orange-300",
-      button: "bg-orange-500 hover:bg-orange-400 text-white",
-      ring: featured ? "ring-1 ring-orange-400/35" : "",
+      button: "bg-[#ff6a00] hover:bg-[#ff7d26] text-white",
+      ring: featured ? "ring-1 ring-orange-500/30" : "",
     };
   }
 
   if (tone === "enterprise") {
     return {
-      card: "border-cyan-300/20 bg-gradient-to-b from-cyan-400/8 to-white/[0.02]",
-      icon: "bg-cyan-300/10 text-cyan-200 border-cyan-300/20",
-      accent: "text-cyan-200",
-      button: "bg-white/10 hover:bg-white/15 text-white",
+      card: "border-white/10 bg-[linear-gradient(180deg,rgba(255,115,0,0.04),rgba(10,10,10,0.94)_24%,rgba(10,10,10,0.98)_100%)] shadow-[0_18px_45px_rgba(0,0,0,0.35)]",
+      icon: "bg-white/[0.03] text-white/75 border-white/10",
+      accent: "text-white/55",
+      button: "bg-white/[0.06] hover:bg-white/[0.1] text-white",
       ring: "",
     };
   }
 
   return {
-    card: "border-white/10 bg-white/[0.02]",
-    icon: "bg-white/5 text-white/80 border-white/10",
-    accent: "text-white/70",
-    button: "bg-white/10 hover:bg-white/15 text-white",
+    card: "border-white/10 bg-[linear-gradient(180deg,rgba(255,115,0,0.03),rgba(10,10,10,0.94)_22%,rgba(10,10,10,0.98)_100%)] shadow-[0_18px_45px_rgba(0,0,0,0.32)]",
+    icon: "bg-white/[0.03] text-white/75 border-white/10",
+    accent: "text-white/60",
+    button: "bg-white/[0.06] hover:bg-white/[0.1] text-white",
     ring: "",
   };
 }
@@ -179,8 +179,9 @@ export default function Plans() {
   );
 
   return (
-    <div className="min-h-screen bg-[#070708] text-white">
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#070708]/80 backdrop-blur-xl">
+    <div className="min-h-screen bg-[#050505] text-white">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,115,0,0.1),transparent_22%),linear-gradient(180deg,#050505_0%,#050505_58%,#070707_100%)]" />
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/8 bg-[#050505]/84 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-4 md:h-20">
           <a href="/#home" className="flex items-center gap-2">
             <img src="/images/logo-transparent.png" alt="GLX Partners" className="h-12 w-auto md:h-20" />
@@ -190,7 +191,7 @@ export default function Plans() {
             <m.div whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }}>
               <Button
                 variant="ghost"
-                className="group relative rounded-full border border-orange-500/30 bg-orange-500/5 px-4 text-white hover:bg-orange-500/10 hover:text-white"
+                className="group relative rounded-full border border-orange-500/25 bg-[#120c08] px-4 text-white hover:bg-[#1b120b] hover:text-white"
               >
                 <span className="flex items-center gap-2">
                   <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
@@ -202,15 +203,15 @@ export default function Plans() {
         </div>
       </header>
 
-      <main className="px-4 pb-20 pt-28 md:pt-36">
+      <main className="relative px-4 pb-20 pt-28 md:pt-36">
         <section className="container">
           <m.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-10"
+            className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] md:p-10"
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(249,115,22,0.14),transparent_45%),radial-gradient(circle_at_88%_12%,rgba(34,211,238,0.08),transparent_42%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,115,0,0.14),transparent_34%,transparent_62%,rgba(255,115,0,0.08)),radial-gradient(circle_at_8%_18%,rgba(255,115,0,0.14),transparent_34%),radial-gradient(circle_at_90%_10%,rgba(255,115,0,0.05),transparent_30%)]" />
             <div className="relative z-10 max-w-5xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-300/90">
                 GLX Partners - Portfolio & Planos
@@ -245,7 +246,7 @@ export default function Plans() {
           </m.div>
         </section>
 
-        <section className="container mt-14 border-t border-white/10 pt-14">
+        <section className="container mt-14 border-t border-white/8 pt-14">
           <div className="mx-auto max-w-4xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-300/90">
               GLX Partners - Consultoria
@@ -268,24 +269,23 @@ export default function Plans() {
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.45, delay: index * 0.06, ease: "easeOut" }}
                 className={cn(
-                  "relative flex h-full flex-col rounded-2xl border p-6 md:p-7",
+                  "relative flex h-full flex-col rounded-[1.6rem] border p-5 md:p-6",
                   plan.featured
-                    ? "border-orange-400/35 bg-gradient-to-b from-orange-500/10 to-white/[0.02] shadow-[0_10px_30px_rgba(249,115,22,0.08)]"
-                    : "border-white/10 bg-white/[0.02]",
+                    ? "border-orange-500/40 bg-[linear-gradient(180deg,rgba(255,115,0,0.13),rgba(8,8,8,0.94)_26%,rgba(8,8,8,0.99)_100%)] shadow-[0_0_0_1px_rgba(255,115,0,0.08),0_22px_52px_rgba(0,0,0,0.46)]"
+                    : "border-white/10 bg-[linear-gradient(180deg,rgba(255,115,0,0.03),rgba(8,8,8,0.94)_24%,rgba(8,8,8,0.99)_100%)] shadow-[0_18px_45px_rgba(0,0,0,0.3)]",
                 )}
               >
                 {plan.featured ? (
-                  <div className="absolute -top-3 left-6 rounded-full border border-orange-300/30 bg-orange-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+                  <div className="absolute -top-3 left-6 rounded-full border border-orange-400/30 bg-[#1c1209] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200 shadow-[0_10px_30px_rgba(255,115,0,0.15)]">
                     ★ MAIS CONTRATADO
                   </div>
                 ) : null}
 
-                <div className="mb-4">
+                <div className="mb-3">
                   <p className={cn("text-[11px] font-semibold uppercase tracking-[0.2em]", plan.featured ? "text-orange-200" : "text-white/55")}>
                     {plan.badge}
                   </p>
                   <h3 className="mt-2 text-2xl font-bold tracking-tight">{plan.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/70">{plan.summary}</p>
                 </div>
 
                 <ul className="space-y-2.5">
@@ -297,19 +297,14 @@ export default function Plans() {
                   ))}
                 </ul>
 
-                <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-white/50">Indicado quando</p>
-                  <p className="mt-2 text-sm leading-relaxed text-white/75">{plan.indication}</p>
-                </div>
-
-                <div className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
+                <div className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
                   {plan.timeline}
                 </div>
               </m.div>
             ))}
           </div>
 
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+          <div className="mt-8 rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,115,0,0.04),rgba(9,9,9,0.96)_34%,rgba(9,9,9,0.99)_100%)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
             <p className="text-sm leading-relaxed text-white/70">
               * A Sprint Diagnostica e a porta de entrada de todos os planos. Em 10-15 dias entregamos o baseline,
               o mapa de vazamentos e o business case com ROI projetado. O valor da Sprint e 100% creditado no Setup
@@ -318,7 +313,7 @@ export default function Plans() {
           </div>
         </section>
 
-        <section id="control-tower-product" className="container mt-16 scroll-mt-28 border-t border-white/10 pt-14">
+        <section id="control-tower-product" className="container mt-16 scroll-mt-28 border-t border-white/8 pt-14">
           <div className="mx-auto max-w-4xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-300/90">
               GLX Control Tower - Produto
@@ -334,7 +329,6 @@ export default function Plans() {
 
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {CONTROL_TOWER_PLANS.map((plan, index) => {
-              const Icon = plan.icon;
               const tone = toneClasses(plan.tone, plan.featured);
               return (
                 <m.div
@@ -344,28 +338,23 @@ export default function Plans() {
                   viewport={{ once: true, margin: "-80px" }}
                   transition={{ duration: 0.45, delay: index * 0.07, ease: "easeOut" }}
                   className={cn(
-                    "relative flex h-full flex-col rounded-2xl border p-6 md:p-7",
+                    "relative flex h-full flex-col rounded-[1.6rem] border p-5 md:p-6",
                     tone.card,
                     tone.ring,
                   )}
                 >
                   {plan.featured ? (
-                    <div className="absolute -top-3 left-6 rounded-full border border-orange-300/30 bg-orange-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+                    <div className="absolute -top-3 left-6 rounded-full border border-orange-400/30 bg-[#1c1209] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200 shadow-[0_10px_30px_rgba(255,115,0,0.15)]">
                       RECOMENDADO
                     </div>
                   ) : null}
-
-                  <div className={cn("mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border", tone.icon)}>
-                    <Icon className="h-5 w-5" />
-                  </div>
 
                   <h3 className="text-2xl font-bold tracking-tight">{plan.title}</h3>
                   <p className={cn("mt-2 text-sm font-semibold uppercase tracking-[0.14em]", tone.accent)}>
                     {plan.timeline}
                   </p>
-                  <p className="mt-4 text-sm leading-relaxed text-white/70">{plan.summary}</p>
 
-                  <ul className="mt-5 space-y-2.5">
+                  <ul className="mt-4 space-y-2.5">
                     {plan.bullets.map((bullet) => (
                       <li key={bullet} className="flex items-start gap-2.5 text-sm text-white/80">
                         <Check className={cn("mt-0.5 h-4 w-4 shrink-0", plan.featured ? "text-orange-300" : "text-white/50")} />
@@ -394,11 +383,11 @@ export default function Plans() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-10"
+            className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.42)] md:p-10"
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(249,115,22,0.14),transparent_44%),radial-gradient(circle_at_88%_82%,rgba(34,211,238,0.06),transparent_40%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(255,115,0,0.14),transparent_42%),linear-gradient(90deg,rgba(255,115,0,0.05),transparent_38%,transparent_70%,rgba(255,115,0,0.03))]" />
             <div className="relative z-10 mx-auto max-w-3xl text-center">
-              <div className="mx-auto mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-orange-400/25 bg-orange-500/10 text-orange-300">
+              <div className="mx-auto mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-orange-400/25 bg-[#17100b] text-orange-300">
                 <Sparkles className="h-5 w-5" />
               </div>
               <p className="text-lg leading-relaxed text-white/85">
@@ -411,7 +400,7 @@ export default function Plans() {
               <div className="mt-7">
                 <Button
                   onClick={openCalendly}
-                  className="h-auto rounded-full bg-orange-500 px-8 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white hover:bg-orange-400 md:px-10"
+                  className="h-auto rounded-full bg-[#ff6a00] px-8 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white hover:bg-[#ff7d26] md:px-10"
                 >
                   Agendar Sprint Diagnostica
                 </Button>
@@ -424,7 +413,7 @@ export default function Plans() {
         </section>
       </main>
 
-      <footer className="border-t border-white/10 px-4 py-8">
+      <footer className="border-t border-white/8 px-4 py-8">
         <div className="container text-center text-sm text-white/45">
           GLX Partners | glxpartners.io | Growth. Lean. Execution.
         </div>
