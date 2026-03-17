@@ -60,6 +60,27 @@ function badgeForPriority(priority: Priority) {
   return { label: 'OK', className: 'green' };
 }
 
+function renderMoneyValueWithSmallSymbol(value: string) {
+  const hasLeadingMinus = /^-+\s*/.test(value);
+  const normalized = value.replace(/^-+\s*/, '');
+  if (!normalized.startsWith('R$')) return value;
+  return (
+    <>
+      {hasLeadingMinus ? '-' : null}
+      <span className="money-symbol">R$</span> {normalized.replace(/^R\$\s*/, '')}
+    </>
+  );
+}
+
+function renderPercentValueWithSmallSymbol(value: number, fractionDigits = 1) {
+  return (
+    <>
+      {value.toFixed(fractionDigits)}
+      <span className="percent-symbol">%</span>
+    </>
+  );
+}
+
 function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersChange, lang = "PT", appointments, integrationHealth }: Props) {
   const { t } = useTranslation();
   const { formatCompactMoney, formatMoney, moneyTitle } = useCurrency();
@@ -204,6 +225,14 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
   }, [weeklyTrend]);
   const financeCurrent = financeWeeks[financeWeeks.length - 1];
   const financePrev = financeWeeks[financeWeeks.length - 2];
+  const grossRevenueTrendSeries = useMemo(
+    () => financeWeeks.map((week) => Math.round(week.gross)),
+    [financeWeeks],
+  );
+  const grossRevenueTrendCategories = useMemo(
+    () => financeWeeks.map((week) => week.label),
+    [financeWeeks],
+  );
   const financeRules = useMemo(() => {
     const current = financeCurrent;
     if (!current) return [];
@@ -238,6 +267,14 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
     }));
     return { historical: points, projected };
   }, [financeWeeks]);
+  const cashCurrentValue = cashProjection.historical[cashProjection.historical.length - 1]?.cash ?? 0;
+  const cashProjectedValue = cashProjection.projected[cashProjection.projected.length - 1]?.cash ?? cashCurrentValue;
+  const delinquencyCurrent = financeCurrent?.delinquencyPct ?? 0;
+  const fixedExpenseRatioCurrent = financeCurrent?.fixedPct ?? 0;
+  const delinquencyColor = delinquencyCurrent > 8 ? 'var(--red)' : delinquencyCurrent >= 4 ? 'var(--yellow)' : 'var(--green)';
+  const fixedExpenseRatioColor = fixedExpenseRatioCurrent > 60 ? 'var(--red)' : fixedExpenseRatioCurrent >= 45 ? 'var(--yellow)' : 'var(--green)';
+  const cashPositionColor = cashCurrentValue < 0 ? 'var(--red)' : cashProjectedValue < 0 ? 'var(--yellow)' : 'var(--green)';
+  const cashProjectionColor = cashProjectedValue < 0 ? 'var(--yellow)' : 'var(--green)';
   const marketingWeeks = useMemo(() => {
     return weeklyTrend.map((w, idx) => {
       const leads = Math.max(1, w.leads);
@@ -366,8 +403,8 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
       {activeTab === 0 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> {t('Visão CEO — Resumo')}</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle(t('Faturamento Bruto'))}</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('Período')}</span></div></div>
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle(t('Receita Líquida'))}</div><div className="overview-card-value">{fmt(kpis.netRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('92% do bruto')}</span></div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">{t('Faturamento Bruto')}</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(kpis.grossRevenue))}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('Período')}</span></div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">{t('Receita Líquida')}</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(kpis.netRevenue))}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>{t('92% do bruto')}</span></div></div>
           <div className="overview-card"><div className="overview-card-label">{t('Ocupação')}</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">{t('No-Show')}</div><div className="overview-card-value" style={{color: kpis.noShowRate > 10 ? 'var(--yellow)' : 'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div></div>
         </div>
@@ -440,10 +477,39 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
       {activeTab === 2 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Financeiro Executivo</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Faturamento Bruto')}</div><div className="overview-card-value">{fmt(financeCurrent?.gross ?? 0)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Líquida')}</div><div className="overview-card-value">{fmt(financeCurrent?.net ?? 0)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Margem Líquida</div><div className="overview-card-value" style={{color:(financeCurrent?.marginPct ?? 0) >= 18 ? 'var(--green)' : 'var(--yellow)'}}>{(financeCurrent?.marginPct ?? 0).toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Ticket Médio')}</div><div className="overview-card-value">{fmt(financeCurrent?.ticketAvg ?? 0)}</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Faturamento Bruto</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(financeCurrent?.gross ?? 0))}</div></div>
+          <div className="overview-card">
+            <div className="overview-card-label no-kpi-source">Faturamento Bruto (Tendência)</div>
+            <div className="overview-card-value" style={{ fontSize: 'calc(clamp(1.9rem, 1.45rem + 0.45vw, 2.5rem) * var(--font-scale))' }}>
+              {renderMoneyValueWithSmallSymbol(fmt(financeCurrent?.gross ?? 0))}
+            </div>
+            <div style={{ marginTop: 12, border: '1px solid var(--border-card)', borderRadius: 12, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+              <ReactApexChart
+                options={{
+                  ...ct,
+                  chart: { ...ct.chart, type: 'area', sparkline: { enabled: true }, toolbar: { show: false } },
+                  stroke: { curve: 'smooth' as const, width: 2.4 },
+                  fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.34, opacityTo: 0.06 } },
+                  colors: ['#ff6a1a'],
+                  grid: { show: false },
+                  xaxis: { ...ct.xaxis, categories: grossRevenueTrendCategories, labels: { show: false } },
+                  yaxis: { show: false },
+                  tooltip: { y: { formatter: (value: number) => fmt(value) } },
+                }}
+                series={[{ name: 'Faturamento Bruto', data: grossRevenueTrendSeries }]}
+                type="area"
+                height={86}
+              />
+            </div>
+            <div className="overview-card-info"><div className="dot" style={{ background: 'var(--green)' }} /><span>Atualiza com filtros</span></div>
+          </div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Receita Líquida</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(financeCurrent?.net ?? 0))}</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Margem Líquida</div><div className="overview-card-value" style={{color:(financeCurrent?.marginPct ?? 0) >= 18 ? 'var(--green)' : 'var(--yellow)'}}>{(financeCurrent?.marginPct ?? 0).toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Ticket Médio</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(financeCurrent?.ticketAvg ?? 0))}</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Inadimplência (%)</div><div className="overview-card-value" style={{ color: delinquencyColor }}>{delinquencyCurrent.toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Despesas Fixas/Receita (%)</div><div className="overview-card-value" style={{ color: fixedExpenseRatioColor }}>{fixedExpenseRatioCurrent.toFixed(1)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Posição de Caixa</div><div className="overview-card-value" style={{ color: cashPositionColor }}>{renderMoneyValueWithSmallSymbol(fmt(cashCurrentValue))}</div></div>
+          <div className="overview-card"><div className="overview-card-label no-kpi-source">Posição de Caixa (Projeção)</div><div className="overview-card-value" style={{ color: cashProjectionColor }}>{renderMoneyValueWithSmallSymbol(fmt(cashProjectedValue))}</div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 Faturamento Bruto Mensal (R$)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Coluna + meta proporcional (D20)</span></div><div className="chart-card-body">
@@ -463,10 +529,10 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">05 Inadimplência (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Bullet chart executivo</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,barHeight:'45%',borderRadius:4}},colors:['#ef4444'],xaxis:{...ct.xaxis,max:12},annotations:{xaxis:[{x:5,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 5%',style:{color:'#fff',background:'#22c55e'}}},{x:8,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 8%',style:{color:'#fff',background:'#ef4444'}}}]},legend:{show:false}}} series={[{name:'Inadimplência %',data:[+(financeCurrent?.delinquencyPct ?? 0).toFixed(1)]}]} type="bar" height={180}/>
+            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,barHeight:'45%',borderRadius:4}},colors:['#ef4444'],xaxis:{...ct.xaxis,max:12},annotations:{xaxis:[{x:4,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 4%',style:{color:'#fff',background:'#22c55e'}}},{x:8,borderColor:'#eab308',strokeDashArray:4,label:{text:'P2 8%',style:{color:'#111',background:'#eab308'}}}]},legend:{show:false}}} series={[{name:'Inadimplência %',data:[+(financeCurrent?.delinquencyPct ?? 0).toFixed(1)]}]} type="bar" height={180}/>
           </div></div>
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">06 Despesas Fixas / Receita (%)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'area'},fill:{type:'gradient',gradient:{shadeIntensity:1,opacityFrom:0.22,opacityTo:0}},colors:['#f59e0b'],xaxis:{...ct.xaxis,categories:financeWeeks.map(w=>w.label)},annotations:{yaxis:[{y:50,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 50%',style:{color:'#fff',background:'#22c55e'}}},{y:60,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 > 60%',style:{color:'#fff',background:'#ef4444'}}}]}}} series={[{name:'Despesas fixas / receita %',data:financeWeeks.map(w=>+w.fixedPct.toFixed(1))}]} type="area" height={220}/>
+            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'area'},fill:{type:'gradient',gradient:{shadeIntensity:1,opacityFrom:0.22,opacityTo:0}},colors:['#f59e0b'],xaxis:{...ct.xaxis,categories:financeWeeks.map(w=>w.label)},annotations:{yaxis:[{y:45,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 45%',style:{color:'#fff',background:'#22c55e'}}},{y:60,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P3 > 60%',style:{color:'#fff',background:'#ef4444'}}}]}}} series={[{name:'Despesas fixas / receita %',data:financeWeeks.map(w=>+w.fixedPct.toFixed(1))}]} type="area" height={220}/>
           </div></div>
         </div>
         <div className="chart-grid">
@@ -479,10 +545,10 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
       {activeTab === 3 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Marketing & Captação</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">Leads / Semana</div><div className="overview-card-value">{marketingCurrent?.leads ?? 0}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Conversão Lead → Agendamento</div><div className="overview-card-value">{(marketingCurrent?.conversion ?? 0).toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle('CPL')}</div><div className="overview-card-value">{fmt(marketingCurrent?.cpl ?? 0)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">ROI Médio por Canal</div><div className="overview-card-value" style={{color:(marketingByChannel.reduce((s,c)=>s+c.roi,0)/Math.max(marketingByChannel.length,1)) > 200 ? 'var(--green)' : 'var(--yellow)'}}>{(marketingByChannel.reduce((s,c)=>s+c.roi,0)/Math.max(marketingByChannel.length,1)).toFixed(0)}%</div></div>
+          <div className="overview-card"><div className="overview-card-label">Leads</div><div className="overview-card-value">{marketingCurrent?.leads ?? 0}</div></div>
+          <div className="overview-card"><div className="overview-card-label">Taxa de Conversão Lead → Agendamento</div><div className="overview-card-value">{renderPercentValueWithSmallSymbol(marketingCurrent?.conversion ?? 0, 1)}</div></div>
+          <div className="overview-card"><div className="overview-card-label">Custo por Lead (CPL)</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(marketingCurrent?.cpl ?? 0))}</div></div>
+          <div className="overview-card"><div className="overview-card-label">ROI Médio</div><div className="overview-card-value" style={{color:(marketingByChannel.reduce((s,c)=>s+c.roi,0)/Math.max(marketingByChannel.length,1)) > 200 ? 'var(--green)' : 'var(--yellow)'}}>{renderPercentValueWithSmallSymbol((marketingByChannel.reduce((s,c)=>s+c.roi,0)/Math.max(marketingByChannel.length,1)), 0)}</div></div>
         </div>
         <div className="chart-grid">
           <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 Leads Gerados / Semana</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Coluna semanal + linha de meta</span></div><div className="chart-card-body">
@@ -506,8 +572,8 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
           </div></div>
         </div>
       </>)}
-      {/* ===== OPERAÇÃO ===== */}
-      {activeTab === 4 && (
+      {/* ===== INTEGRACOES ===== */}
+      {activeTab === 5 && (
         <IntegrationSection
           plan="ESSENTIAL"
           totalRecords={kpis.total}
@@ -516,8 +582,8 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
           integrationHealth={integrationHealth}
         />
       )}
-      {activeTab === 5 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Operação & Experiência</h2></div>
+      {activeTab === 4 && (<>
+        <div className="section-header"><h2><span className="orange-bar" /> Operação & UX</h2></div>
         <div className="overview-row">
           <div className="overview-card"><div className="overview-card-label">NPS Geral</div><div className="overview-card-value" style={{color:npsGaugeValue >= 8 ? 'var(--green)' : 'var(--yellow)'}}>{npsGaugeValue}</div></div>
           <div className="overview-card"><div className="overview-card-label">Espera média</div><div className="overview-card-value">{(opsCurrent?.waitMinutes ?? kpis.avgWait).toFixed(0)} min</div></div>
@@ -545,7 +611,7 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
           </div></div>
         </div>
         <div className="chart-card">
-          <div className="chart-card-header"><span className="chart-card-title">Tabela Operação & Experiência (P1/P2)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Alertas e ações imediatas</span></div>
+          <div className="chart-card-header"><span className="chart-card-title">Tabela Operação & UX (P1/P2)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Alertas e ações imediatas</span></div>
           <div className="chart-card-body" style={{padding:12}}>
             <table className="data-table"><thead><tr><th>ID</th><th>KPI</th><th>Valor</th><th>Meta</th><th>Base N</th><th>Status</th><th>Ação</th></tr></thead><tbody>
               {opsRules.map((row) => { const badge = badgeForPriority(row.priority); return <tr key={row.id}><td>{row.id}</td><td>{row.kpi}</td><td style={{fontWeight:700}}>{row.value}</td><td>{row.meta}</td><td>{row.baseN}</td><td><span className={`chart-card-badge ${badge.className}`} style={{display:'inline-block'}}>{badge.label}</span></td><td>{row.action}</td></tr>; })}
@@ -557,5 +623,3 @@ function EssentialDashboard({ activeTab, theme, visualScale, filters, onFiltersC
 }
 
 export default memo(EssentialDashboard);
-
-

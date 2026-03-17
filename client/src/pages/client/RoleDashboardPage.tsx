@@ -1277,7 +1277,11 @@ function RoleDashboardPageContent({ view }: { view: RoleDashboardView }) {
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-white/10">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded bg-[#e67e22] flex items-center justify-center text-sm font-bold text-white">GLX</div>
+              <img
+                src="/images/logo-badge.jpg"
+                alt="GLX"
+                className="h-10 w-10 rounded-full object-cover"
+              />
               <div className="leading-tight">
                 <p className="text-sm font-semibold">PERFORMANCE</p>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">CONTROL TOWER</p>

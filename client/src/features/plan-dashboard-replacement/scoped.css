@@ -309,6 +309,14 @@
   letter-spacing: 0.08em;
 }
 
+.glx-plan-dashboard-root .sidebar-logo-image {
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  object-fit: contain;
+}
+
 .glx-plan-dashboard-root .sidebar-logo-text {
   display: flex;
   flex-direction: column;
@@ -514,6 +522,77 @@
   margin-top: 10px;
 }
 
+.glx-plan-dashboard-root .language-picker {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.glx-plan-dashboard-root .language-globe-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform var(--transition-soft),
+    border-color var(--transition-soft),
+    background var(--transition-soft),
+    box-shadow var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .language-globe-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.glx-plan-dashboard-root .language-menu {
+  position: absolute;
+  top: 54px;
+  left: 0;
+  z-index: 20;
+  min-width: 160px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border-card);
+  background: var(--panel-bg-strong);
+  backdrop-filter: none;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28);
+  display: grid;
+  gap: 6px;
+}
+
+.glx-plan-dashboard-root .language-option {
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  text-align: left;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-soft), color var(--transition-soft), border-color var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .language-option:hover {
+  background: var(--panel-bg-strong);
+}
+
+.glx-plan-dashboard-root .language-option.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .glx-plan-dashboard-root .selector-btn,
 .glx-plan-dashboard-root .filter-clear,
 .glx-plan-dashboard-root .topbar-btn,
@@ -650,6 +729,44 @@
 
 .glx-plan-dashboard-root .theme-toggle-track.light .theme-toggle-thumb {
   transform: translateX(20px);
+}
+
+.glx-plan-dashboard-root .theme-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.glx-plan-dashboard-root .theme-icon-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform var(--transition-soft),
+    border-color var(--transition-soft),
+    background var(--transition-soft),
+    box-shadow var(--transition-soft),
+    color var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .theme-icon-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.glx-plan-dashboard-root .theme-icon-btn.active {
+  border-color: var(--accent);
+  background: rgba(255, 106, 26, 0.18);
+  color: #fff;
+  box-shadow: 0 8px 16px rgba(255, 106, 26, 0.22);
 }
 
 .glx-plan-dashboard-root .main-area {
@@ -850,6 +967,47 @@
   gap: 12px;
 }
 
+.glx-plan-dashboard-root .topbar-corner-theme {
+  position: absolute;
+  top: 16px;
+  right: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 2;
+}
+
+.glx-plan-dashboard-root .topbar-theme-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform var(--transition-soft),
+    border-color var(--transition-soft),
+    background var(--transition-soft),
+    box-shadow var(--transition-soft),
+    color var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .topbar-theme-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.glx-plan-dashboard-root .topbar-theme-btn.active {
+  border-color: var(--accent);
+  background: rgba(255, 106, 26, 0.18);
+  color: #fff;
+  box-shadow: 0 6px 12px rgba(255, 106, 26, 0.2);
+}
+
 .glx-plan-dashboard-root .currency-toolbar {
   display: inline-flex;
   align-items: center;
@@ -858,6 +1016,16 @@
   border-radius: 999px;
   border: 1px solid var(--border-card);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.glx-plan-dashboard-root .sidebar-currency-toolbar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 18px;
+  padding: 10px 12px;
 }
 
 .glx-plan-dashboard-root .currency-toolbar-label {
@@ -872,6 +1040,61 @@
   min-width: 86px;
   min-height: auto;
   padding: 9px 30px 9px 12px;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-toolbar .currency-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-panel {
+  display: grid;
+  gap: 6px;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-select-box {
+  width: 178px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.03);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-square {
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+  padding: 0 32px 0 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-square:focus {
+  border: 0;
+  box-shadow: inset 0 0 0 2px rgba(255, 106, 26, 0.22);
+}
+
+.glx-plan-dashboard-root .sidebar-currency-quote {
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  max-width: 220px;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-quote.warning {
+  color: #d97706;
 }
 
 .glx-plan-dashboard-root .currency-toolbar-meta {
@@ -894,6 +1117,58 @@
 .glx-plan-dashboard-root .currency-banner.warning {
   background: rgba(251, 191, 36, 0.1);
   border-color: rgba(251, 191, 36, 0.32);
+}
+
+.glx-plan-dashboard-root .sidebar-utility-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.glx-plan-dashboard-root .sidebar-utility-actions .topbar-btn {
+  min-height: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  padding-inline: 14px;
+}
+
+.glx-plan-dashboard-root .sidebar-action-icon {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+}
+
+.glx-plan-dashboard-root .sidebar-action-text {
+  width: 168px;
+  justify-content: center;
+}
+
+.glx-plan-dashboard-root .sidebar-action-with-icon {
+  width: 168px;
+  justify-content: flex-start;
+  gap: 8px;
+  padding-inline: 14px;
+}
+
+.glx-plan-dashboard-root .sidebar-action-with-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.glx-plan-dashboard-root .sidebar-action-with-icon span {
+  line-height: 1;
+}
+
+.glx-plan-dashboard-root .sidebar-currency-banner {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
 }
 
 .glx-plan-dashboard-root .topbar-actions>span {
@@ -1067,18 +1342,80 @@
 }
 
 .glx-plan-dashboard-root .filter-bar {
-  padding: 24px;
-  border-radius: var(--panel-radius);
+  padding: 20px 22px 18px;
+  border-radius: 26px;
 }
 
 .glx-plan-dashboard-root .filter-bar-title {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--text-primary);
-  font-size: calc(20px * var(--font-scale));
-  font-weight: 600;
-  margin-bottom: 16px;
+  font-size: calc(17px * var(--font-scale));
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+}
+
+.glx-plan-dashboard-root .filter-info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.glx-plan-dashboard-root .filter-info-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-soft),
+    color var(--transition-soft),
+    background var(--transition-soft),
+    transform var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .filter-info-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(148, 163, 184, 0.5);
+  color: var(--text-primary);
+}
+
+.glx-plan-dashboard-root .filter-info-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 12;
+  width: min(360px, 78vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-card);
+  background: var(--tooltip-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.22);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    opacity var(--transition-soft),
+    transform var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .filter-info-wrap:hover .filter-info-popover,
+.glx-plan-dashboard-root .filter-info-wrap:focus-within .filter-info-popover {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .glx-plan-dashboard-root .dot {
@@ -1091,8 +1428,86 @@
 
 .glx-plan-dashboard-root .filter-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
-  gap: 14px;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 10px;
+}
+
+.glx-plan-dashboard-root .filter-row.no-unit {
+  grid-template-columns: repeat(5, minmax(172px, 1fr));
+  grid-template-areas:
+    "period channel professional procedure severity"
+    "clear . . . .";
+}
+
+.glx-plan-dashboard-root .filter-row.with-unit {
+  grid-template-columns: repeat(6, minmax(158px, 1fr));
+  grid-template-areas:
+    "period channel professional procedure unit severity"
+    "clear . . . . .";
+}
+
+.glx-plan-dashboard-root .filter-bar .filter-select {
+  min-height: 48px;
+  border-radius: 16px;
+  padding: 0 40px 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-color: rgba(148, 163, 184, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.glx-plan-dashboard-root .filter-bar .filter-select:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 6px 14px rgba(15, 23, 42, 0.06);
+}
+
+.glx-plan-dashboard-root .filter-period {
+  grid-area: period;
+}
+
+.glx-plan-dashboard-root .filter-channel {
+  grid-area: channel;
+}
+
+.glx-plan-dashboard-root .filter-professional {
+  grid-area: professional;
+}
+
+.glx-plan-dashboard-root .filter-procedure {
+  grid-area: procedure;
+}
+
+.glx-plan-dashboard-root .filter-unit {
+  grid-area: unit;
+}
+
+.glx-plan-dashboard-root .filter-severity {
+  grid-area: severity;
+}
+
+.glx-plan-dashboard-root .filter-clear-text {
+  grid-area: clear;
+  justify-self: stretch;
+  align-self: center;
+  margin-top: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+  transition: color var(--transition-soft), transform var(--transition-soft);
+}
+
+.glx-plan-dashboard-root .filter-clear-text:hover {
+  color: var(--text-secondary);
+  transform: translateX(1px);
 }
 
 .glx-plan-dashboard-root .filter-clear {
@@ -1190,6 +1605,20 @@
   line-height: 1;
 }
 
+.glx-plan-dashboard-root .overview-card-value .money-symbol {
+  font-size: 0.52em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  vertical-align: 0.22em;
+}
+
+.glx-plan-dashboard-root .overview-card-value .percent-symbol {
+  font-size: 0.56em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  vertical-align: 0.18em;
+}
+
 .glx-plan-dashboard-root .overview-card-info {
   display: flex;
   align-items: center;
@@ -1208,18 +1637,15 @@
 }
 
 .glx-plan-dashboard-root .overview-card-label::after {
-  content: ' · cálculo e fonte';
-  color: var(--accent-strong);
-  letter-spacing: 0.08em;
-  font-size: 10px;
+  content: none;
 }
 
-.glx-plan-dashboard-root[data-lang='en'] .overview-card-label::after {
-  content: ' · calculation & source';
+.glx-plan-dashboard-root .overview-card-label.no-kpi-source {
+  letter-spacing: 0.02em;
 }
 
-.glx-plan-dashboard-root[data-lang='es'] .overview-card-label::after {
-  content: ' · cálculo y fuente';
+.glx-plan-dashboard-root .overview-card-label.no-kpi-source::after {
+  content: none;
 }
 
 .glx-plan-dashboard-root .kpi-explain-panel {
@@ -1490,13 +1916,23 @@
 }
 
 .glx-plan-dashboard-root .overlay-close {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   width: 38px;
   height: 38px;
+  flex-shrink: 0;
   border: 1px solid var(--border-card);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
   cursor: pointer;
+}
+
+.glx-plan-dashboard-root .overlay-close svg {
+  display: block;
 }
 
 .glx-plan-dashboard-root .overlay-body {
@@ -1825,6 +2261,11 @@
     line-height: 1.55;
   }
 
+  .glx-plan-dashboard-root .topbar-corner-theme {
+    top: 12px;
+    right: 20px;
+  }
+
   .glx-plan-dashboard-root .topbar-actions {
     gap: 8px;
   }
@@ -1842,6 +2283,26 @@
 
   .glx-plan-dashboard-root .filter-row {
     grid-template-columns: 1fr;
+  }
+
+  .glx-plan-dashboard-root .filter-row.no-unit,
+  .glx-plan-dashboard-root .filter-row.with-unit {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+
+  .glx-plan-dashboard-root .filter-period,
+  .glx-plan-dashboard-root .filter-channel,
+  .glx-plan-dashboard-root .filter-professional,
+  .glx-plan-dashboard-root .filter-procedure,
+  .glx-plan-dashboard-root .filter-unit,
+  .glx-plan-dashboard-root .filter-severity,
+  .glx-plan-dashboard-root .filter-clear-text {
+    grid-area: auto;
+  }
+
+  .glx-plan-dashboard-root .filter-clear-text {
+    padding-left: 2px;
   }
 
   .glx-plan-dashboard-root .overview-card,

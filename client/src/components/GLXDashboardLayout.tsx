@@ -120,9 +120,11 @@ export default function GLXDashboardLayout({
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-inherit">
             <Link href="/glx" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">GLX</span>
-              </div>
+              <img
+                src="/images/logo-badge.jpg"
+                alt="GLX"
+                className="h-8 w-8 rounded-full object-cover"
+              />
               <span className="font-semibold text-orange-500">PERFORMANCE</span>
             </Link>
             <button

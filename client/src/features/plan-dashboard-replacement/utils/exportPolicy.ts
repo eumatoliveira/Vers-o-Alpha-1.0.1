@@ -39,7 +39,7 @@ export function getDashboardExportPolicy(plan: DashboardPlan, role: string, acti
   const rulebook = getPlanBusinessRulebook(planTier);
   const canExportFinancial = !isRestrictedFinancialTab(plan, activeTab) || FINANCIAL_EXPORT_ROLES.has(role);
   const executiveLabel = rulebook.exports.executivePdf.automatic ? "PDF Executivo" : "Exportar PDF";
-  const scheduleHint = rulebook.exports.executivePdf.scheduleHint ?? "sob demanda";
+  const executivePdfTitle = "Exportar em PDF o Relatório Executivo dos dados e gráficos da aba atual.";
 
   const basePolicy: DashboardExportPolicy = {
     csv: {
@@ -56,11 +56,9 @@ export function getDashboardExportPolicy(plan: DashboardPlan, role: string, acti
       enabled: plan === "ESSENTIAL" ? true : canExportFinancial,
       label: executiveLabel,
       title:
-        plan === "ESSENTIAL"
-          ? `Relatorio executivo ${rulebook.exports.executivePdf.cadence === "monthly" ? "mensal" : "semanal"} (${scheduleHint}).`
-          : canExportFinancial
-            ? `Exportar relatorio executivo ${rulebook.exports.executivePdf.cadence === "monthly" ? "mensal" : "semanal"} do dashboard.`
-            : "Seu perfil nao possui permissao para exportacao financeira nesta aba.",
+        plan === "ESSENTIAL" || canExportFinancial
+          ? executivePdfTitle
+          : "Seu perfil nao possui permissao para exportacao financeira nesta aba.",
     },
     investorPdf: {
       visible: false,

@@ -23,7 +23,7 @@ import { ENV } from "./_core/env";
 const TEST_CLIENTS = ENV.bootstrapTestClientEmails.map((email) => ({
   email,
   password: ENV.bootstrapTestClientPassword,
-  plan: "enterprise" as const,
+  plan: "essencial" as const,
   name: ENV.bootstrapTestClientName,
 }));
 

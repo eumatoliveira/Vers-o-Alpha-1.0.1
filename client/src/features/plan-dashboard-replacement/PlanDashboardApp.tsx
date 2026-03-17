@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo, KeyboardEvent, MouseEvent, useDeferredValue, startTransition, type ChangeEvent } from 'react';
-import { Redirect, useLocation } from 'wouter';
-import { Bell, Camera, CircleHelp, Menu, Moon, Settings, Sun, UserCircle2, X } from 'lucide-react';
+import { Redirect } from 'wouter';
+import { Bell, Camera, CircleHelp, Globe, LogOut, Menu, Moon, Settings, Sun, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -67,6 +67,26 @@ function planLabel(plan: Plan): string {
   return 'Start';
 }
 
+function getCurrencySelectLabel(code: string) {
+  if (code === 'BRL') return '🇧🇷 BRL';
+  if (code === 'USD') return '🇺🇸 USD';
+  if (code === 'EUR') return '🇪🇺 EUR';
+  return 'Outros (USD)';
+}
+
+function formatBrasiliaReferenceLabel(lastUpdatedAt: string | null) {
+  const reference = lastUpdatedAt ? new Date(lastUpdatedAt) : new Date();
+  const formatted = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(reference);
+  return `Cotação: ${formatted}, horário Brasília.`;
+}
+
 function getExplainActionLabel(language: Language) {
   if (language === 'en') return 'open calculation and source';
   if (language === 'es') return 'abrir cálculo y fuente';
@@ -125,12 +145,10 @@ function resolveExportRole(user: unknown): string {
 }
 
 const sidebarMenus: Record<Plan, { items: string[] }> = {
-  ESSENTIAL: { items: ['Visão CEO', 'Agenda & No-Show', 'Financeiro Executivo', 'Marketing & Captação', 'Operação & Experiência'] },
+  ESSENTIAL: { items: ['Visão CEO', 'Agenda & No-Show', 'Financeiro Executivo', 'Marketing & Captação', 'Operação & UX', 'Integrações'] },
   PRO: { items: ['Visão CEO', 'Financeiro Avançado', 'Agenda/No-Show', 'Marketing', 'Integrações', 'Operação & Experiência', 'Equipe'] },
   ENTERPRISE: { items: ['Visão CEO', 'Financeiro — Investidor', 'Agenda/No-Show', 'Marketing', 'Multi-Unidade', 'Integrações', 'Operação & Experiência', 'Equipe', 'Governança'] },
 };
-
-sidebarMenus.ESSENTIAL.items.splice(4, 0, 'Integrações');
 
 const i18n: Record<Lang, Record<string, string>> = {
   PT: {
@@ -138,7 +156,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     subtitleEssencial: 'Dashboard executivo para clínicas em estruturação',
     subtitlePro: 'Otimização inteligente por profissional, serviço e canal',
     subtitleEnterprise: 'Inteligência de rede multi-unidade para investidores',
-    dadosVivo: '• Dados ao vivo', help: 'Help', atualizar: 'Atualizar',
+    dadosVivo: 'Dados ao vivo', help: 'Ajuda', atualizar: 'Atualizar', configuracoes: 'Configurações',
     exportCsv: 'Exportar CSV', exportPdf: 'Exportar PDF', sair: 'Sair',
     perfil: 'PERFIL', plano: 'PLANO', idioma: 'IDIOMA',
     escuro: 'Escuro', claro: 'Claro',
@@ -150,7 +168,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     subtitleEssencial: 'Executive dashboard for clinics in structuring',
     subtitlePro: 'Smart optimization by professional, service and channel',
     subtitleEnterprise: 'Multi-unit network intelligence for investors',
-    dadosVivo: '• Live Data', help: 'Help', atualizar: 'Refresh',
+    dadosVivo: 'Live Data', help: 'Help', atualizar: 'Refresh', configuracoes: 'Settings',
     exportCsv: 'Export CSV', exportPdf: 'Export PDF', sair: 'Logout',
     perfil: 'PROFILE', plano: 'PLAN', idioma: 'LANGUAGE',
     escuro: 'Dark', claro: 'Light',
@@ -162,7 +180,7 @@ const i18n: Record<Lang, Record<string, string>> = {
     subtitleEssencial: 'Dashboard ejecutivo para clínicas en estructuración',
     subtitlePro: 'Optimización inteligente por profesional, servicio y canal',
     subtitleEnterprise: 'Inteligencia de red multi-unidad para inversores',
-    dadosVivo: '• Datos en vivo', help: 'Ayuda', atualizar: 'Actualizar',
+    dadosVivo: 'Datos en vivo', help: 'Ayuda', atualizar: 'Actualizar', configuracoes: 'Configuración',
     exportCsv: 'Exportar CSV', exportPdf: 'Exportar PDF', sair: 'Salir',
     perfil: 'PERFIL', plano: 'PLAN', idioma: 'IDIOMA',
     escuro: 'Oscuro', claro: 'Claro',
@@ -652,18 +670,14 @@ const SettingsPanelAdvanced = memo(({
 ));
 
 function PlanDashboardApp() {
-  const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const {
     currency,
-    baseCurrency,
     supportedCurrencies,
     lastUpdatedAt,
-    rate,
-    stale: currencyStale,
-    warning: currencyWarning,
     setCurrency,
   } = useCurrency();
+  const currencyCode = String(currency).toUpperCase();
   const { language, setLanguage } = useLanguage();
   const { t: translateText } = useTranslation();
   const userPlan = toDashboardPlan((user as any)?.plan);
@@ -693,6 +707,10 @@ function PlanDashboardApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const [currencyPreset, setCurrencyPreset] = useState<'BRL' | 'USD' | 'EUR' | 'OTHER_USD'>(
+    currencyCode === 'BRL' ? 'BRL' : currencyCode === 'EUR' ? 'EUR' : 'USD',
+  );
   const [toastMsg, setToastMsg] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [pdfExportMode, setPdfExportMode] = useState<"executive" | "investor" | null>(null);
@@ -813,6 +831,20 @@ function PlanDashboardApp() {
     const next = toDashboardLang(language);
     setLang(prev => (prev === next ? prev : next));
   }, [language]);
+
+  useEffect(() => {
+    if (currencyCode === 'BRL') {
+      setCurrencyPreset('BRL');
+      return;
+    }
+    if (currencyCode === 'EUR') {
+      setCurrencyPreset('EUR');
+      return;
+    }
+    if (currencyCode !== 'USD') {
+      setCurrencyPreset('USD');
+    }
+  }, [currencyCode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1151,7 +1183,7 @@ function PlanDashboardApp() {
 
       <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">GLX</div>
+          <img src="/images/logo-badge.jpg" alt="GLX" className="sidebar-logo-image" />
           <div className="sidebar-logo-text"><span>PERFORMANCE</span><span>CONTROL TOWER</span></div>
         </div>
         <nav className="sidebar-nav">
@@ -1185,35 +1217,64 @@ function PlanDashboardApp() {
           {profilePhone ? <div className="sidebar-profile-phone">{profilePhone}</div> : null}
           <div style={{ marginTop: 14 }}>
             <div className="selector-row-label">{t.idioma}</div>
-            <select className="filter-select" style={{ width: '100%' }} value={lang} onChange={e => handleSetLang(e.target.value as Lang)}>
-              <option value="PT">Português</option>
-              <option value="EN">English</option>
-              <option value="ES">Español</option>
-            </select>
+            <div className="language-picker">
+              <button
+                type="button"
+                className="language-globe-btn"
+                aria-label={translateText('Idioma')}
+                aria-haspopup="menu"
+                aria-expanded={languageMenuOpen}
+                onClick={() => setLanguageMenuOpen((open) => !open)}
+              >
+                <Globe size={18} />
+              </button>
+              {languageMenuOpen ? (
+                <div className="language-menu" role="menu" aria-label={translateText('Idioma')}>
+                  <button type="button" className={`language-option ${lang === 'PT' ? 'active' : ''}`} onClick={() => { handleSetLang('PT'); setLanguageMenuOpen(false); }}>Português</button>
+                  <button type="button" className={`language-option ${lang === 'EN' ? 'active' : ''}`} onClick={() => { handleSetLang('EN'); setLanguageMenuOpen(false); }}>English</button>
+                  <button type="button" className={`language-option ${lang === 'ES' ? 'active' : ''}`} onClick={() => { handleSetLang('ES'); setLanguageMenuOpen(false); }}>Español</button>
+                </div>
+              ) : null}
+            </div>
           </div>
-          <div style={{ marginTop: 12 }}>
-            <div className="selector-row-label">{translateText('Tema').toUpperCase()}</div>
-            <div className="theme-toggle-wrapper" onClick={() => handleSetTheme(theme === 'light' ? 'dark' : 'light')} style={{ cursor: 'pointer' }}>
-              <span className="theme-toggle-icon" aria-hidden="true">
-                {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}
-              </span>
-              <div className={`theme-toggle-track ${theme === 'light' ? 'light' : ''}`}>
-                <div className="theme-toggle-thumb" />
+          <div style={{ marginTop: 14 }}>
+            <div className="selector-row-label">{translateText('Moeda')}</div>
+            <div className="sidebar-currency-panel">
+              <div className="sidebar-currency-select-box">
+              <select
+                id="dashboard-currency-select-sidebar"
+                className="filter-select sidebar-currency-square"
+                value={currencyPreset}
+                onChange={(event) => {
+                  const value = event.target.value as 'BRL' | 'USD' | 'EUR' | 'OTHER_USD';
+                  setCurrencyPreset(value);
+                  const desired = value === 'OTHER_USD' ? 'USD' : value;
+                  const nextCurrency = supportedCurrencies.includes(desired as typeof currency)
+                    ? (desired as typeof currency)
+                    : ('USD' as typeof currency);
+                  void setCurrency(nextCurrency);
+                }}
+              >
+                <option value="BRL">{getCurrencySelectLabel('BRL')}</option>
+                <option value="USD">{getCurrencySelectLabel('USD')}</option>
+                <option value="EUR">{getCurrencySelectLabel('EUR')}</option>
+                <option value="OTHER_USD">{getCurrencySelectLabel('OTHER')}</option>
+              </select>
+              </div>
+              <div className="sidebar-currency-quote">
+                {formatBrasiliaReferenceLabel(lastUpdatedAt)}
               </div>
             </div>
           </div>
-          <div style={{ marginTop: 12 }}>
-            <div className="selector-row-label">{t.plano}</div>
-            <div className="selector-row">
-              <button
-                className="selector-btn active"
-                type="button"
-                title={translateText('Abrir página de planos')}
-                onClick={() => setLocation('/planos')}
-              >
-                {planLabel(activePlan)}
-              </button>
-            </div>
+          <div className="sidebar-utility-actions">
+            <button className="topbar-btn text-btn sidebar-action-with-icon" onClick={() => setShowSettings(true)} aria-label={translateText('Abrir configurações')}>
+              <Settings aria-hidden="true" />
+              <span>{t.configuracoes}</span>
+            </button>
+            <button className="topbar-btn text-btn sidebar-action-with-icon" onClick={handleLogout}>
+              <LogOut aria-hidden="true" />
+              <span>{t.sair}</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -1224,37 +1285,32 @@ function PlanDashboardApp() {
             <button type="button" className="mobile-menu-btn" aria-label={translateText('Abrir menu')} onClick={() => setMobileSidebarOpen(true)}>
               <Menu aria-hidden="true" />
             </button>
-            <div className="topbar-title"><h1>{t[titleKey]}</h1><span>{t[subtitleKey]}</span></div>
+            <div className="topbar-title">
+              <h1>{t[titleKey]}</h1>
+              <span>{t[subtitleKey]}</span>
+            </div>
+          </div>
+          <div className="topbar-corner-theme">
+            <button
+              type="button"
+              className={`topbar-theme-btn ${theme === 'light' ? 'active' : ''}`}
+              aria-label={translateText('Claro')}
+              onClick={() => handleSetTheme('light')}
+            >
+              <Sun size={12} />
+            </button>
+            <button
+              type="button"
+              className={`topbar-theme-btn ${theme !== 'light' ? 'active' : ''}`}
+              aria-label={translateText('Escuro')}
+              onClick={() => handleSetTheme('dark')}
+            >
+              <Moon size={12} />
+            </button>
           </div>
           <div className="topbar-actions">
             {activeFilterCount > 0 && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, marginRight: 4 }}>{activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}</span>}
-            <div className="currency-toolbar">
-              <label className="currency-toolbar-label" htmlFor="dashboard-currency-select">{translateText('Moeda')}</label>
-              <select
-                id="dashboard-currency-select"
-                className="filter-select currency-select"
-                value={currency}
-                onChange={(event) => void setCurrency(event.target.value as typeof currency)}
-              >
-                {supportedCurrencies.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <span className="currency-toolbar-meta">
-                {currency === baseCurrency || !rate
-                  ? `${baseCurrency} ${translateText('base')}`
-                  : `1 ${baseCurrency} = ${rate.toFixed(4)} ${currency}`}
-              </span>
-            </div>
             <button className="topbar-btn live status-btn">{t.dadosVivo}</button>
-            <button className={`topbar-btn topbar-icon-btn notification-btn ${hasUnreadCriticalNotification ? 'has-critical-alert' : hasUnreadWarningNotification ? 'has-warning-alert' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }} aria-label={translateText('Abrir notificações')}>
-              <Bell aria-hidden="true" />
-              {activeNotifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeNotifCount}</span>}
-            </button>
-            <button className="topbar-btn topbar-icon-btn" onClick={() => setShowSettings(true)} aria-label={translateText('Abrir configurações')}>
-              <Settings aria-hidden="true" />
-            </button>
-            <button className="topbar-btn text-btn" onClick={() => setShowHelp(true)}>{t.help}</button>
             <button className="topbar-btn text-btn" onClick={handleRefresh}>{t.atualizar}</button>
             {exportPolicy.csv.visible && (
               <button
@@ -1278,6 +1334,10 @@ function PlanDashboardApp() {
                 {pdfLoading && pdfExportMode === "executive" ? '...' : translateText(exportPolicy.pdf.label)}
               </button>
             )}
+            <button className={`topbar-btn topbar-icon-btn notification-btn ${hasUnreadCriticalNotification ? 'has-critical-alert' : hasUnreadWarningNotification ? 'has-warning-alert' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }} aria-label={translateText('Abrir notificações')}>
+              <Bell aria-hidden="true" />
+              {activeNotifCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--red)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeNotifCount}</span>}
+            </button>
             {exportPolicy.investorPdf.visible && (
               <button
                 type="button"
@@ -1289,16 +1349,8 @@ function PlanDashboardApp() {
                 {pdfLoading && pdfExportMode === "investor" ? '...' : translateText(exportPolicy.investorPdf.label)}
               </button>
             )}
-            <button className="topbar-btn text-btn" onClick={handleLogout}>{t.sair}</button>
           </div>
         </header>
-        {(currencyWarning || lastUpdatedAt) && (
-          <div className={`currency-banner ${currencyStale ? 'warning' : ''}`}>
-            <span>
-              {currencyWarning ?? `${translateText('Cotação de referência')}: ${new Date(lastUpdatedAt!).toLocaleString()}`}
-            </span>
-          </div>
-        )}
         <main className="content" ref={contentRef} key={refreshKey} onClickCapture={handleKpiInteraction} onKeyDownCapture={handleKpiInteraction}>
           {activePlan === 'ESSENTIAL' && <EssentialDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} visualScale={visualScale} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}
           {activePlan === 'PRO' && <ProDashboard lang={lang} activeTab={activeMenuItem} theme={deferredTheme} visualScale={visualScale} filters={filters} onFiltersChange={setFilters} appointments={resolvedAppointments} />}

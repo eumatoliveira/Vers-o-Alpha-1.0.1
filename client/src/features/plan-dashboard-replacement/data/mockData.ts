@@ -259,7 +259,23 @@ export function applyFilters(data: Appointment[], filters: Filters): Appointment
   const cutoffStr = cutoff.toISOString().split("T")[0];
   filtered = filtered.filter((a) => a.date >= cutoffStr);
 
-  if (filters.channel) filtered = filtered.filter((a) => a.channel === filters.channel);
+  if (filters.channel) {
+    if (filters.channel === "OUTROS") {
+      const otherChannelAliases = new Set(["OUTROS", "Outros", "Organico", "Telefone", "Presencial"]);
+      filtered = filtered.filter((a) => otherChannelAliases.has(a.channel));
+    } else if (filters.channel === "Facebook") {
+      const facebookAliases = new Set(["Facebook", "Organico"]);
+      filtered = filtered.filter((a) => facebookAliases.has(a.channel));
+    } else if (filters.channel === "Whatsapp") {
+      const whatsappAliases = new Set(["Whatsapp", "WhatsApp", "Telefone"]);
+      filtered = filtered.filter((a) => whatsappAliases.has(a.channel));
+    } else if (filters.channel === "Indicacao") {
+      const indicationAliases = new Set(["Indicacao", "Indicação"]);
+      filtered = filtered.filter((a) => indicationAliases.has(a.channel));
+    } else {
+      filtered = filtered.filter((a) => a.channel === filters.channel);
+    }
+  }
   if (filters.professional) filtered = filtered.filter((a) => a.professional === filters.professional);
   if (filters.procedure) filtered = filtered.filter((a) => a.procedure === filters.procedure);
   if (filters.status) filtered = filtered.filter((a) => a.status === filters.status);

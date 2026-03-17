@@ -205,6 +205,7 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
       howToCalculate: "Some os valores em aberto ou vencidos e divida pelo faturado do mesmo recorte.",
       sources: sourceSet(mode, ["Asaas / recebiveis", "Financeiro / faturamento"]),
       fields: ["unpaidAmount", "grossRevenue", "dueAt", "paidAt"],
+      note: "Faixas: P1 (meta) < 4% | P2: 4% a 8% | P3: > 8%.",
     };
   }
 
@@ -215,6 +216,7 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
       howToCalculate: "Some as despesas fixas do periodo e divida pela receita liquida do mesmo recorte.",
       sources: sourceSet(mode, ["ERP / centro de custos", "Financeiro / receita liquida"]),
       fields: ["fixedCosts", "netRevenue", "competenceDate"],
+      note: "Faixas: P1 (meta) < 45% | P2: 45% a 60% | P3: > 60%.",
     };
   }
 
@@ -235,6 +237,7 @@ function makeMeta(label: string, mode: KpiSourceMode): KpiMeta {
       howToCalculate: "Some o saldo atual com as entradas previstas e desconte as saidas previstas do periodo.",
       sources: sourceSet(mode, ["Tesouraria / ERP / financeiro", "Fluxo de caixa previsto"]),
       fields: ["cashBalance", "projectedInflows", "projectedOutflows", "competenceDate"],
+      note: "Faixas: P1 (meta) sempre positivo | P2: projecao negativa | P3: caixa negativo.",
     };
   }
 

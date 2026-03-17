@@ -148,7 +148,11 @@ export default function ControlTowerClientLayout({
                 <Menu className="h-5 w-5" />
               </button>
               <button type="button" onClick={goHomeForRole} className="flex items-center gap-2">
-                <span className="text-2xl font-bold tracking-tighter text-[#FF6600]">GLX</span>
+                <img
+                  src="/images/logo-badge.jpg"
+                  alt="GLX"
+                  className="h-8 w-8 rounded-full object-cover"
+                />
                 <span className={cn("text-xl font-light", isDark ? "text-zinc-400" : "text-slate-200")}>Partners</span>
               </button>
             </div>
@@ -301,7 +305,11 @@ export default function ControlTowerClientLayout({
           <div className="flex h-full flex-col">
             <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
               <button type="button" className="flex items-center gap-3" onClick={goHomeForRole}>
-                <div className="flex h-9 w-9 items-center justify-center rounded bg-[#e67e22] text-sm font-bold text-white">GLX</div>
+                <img
+                  src="/images/logo-badge.jpg"
+                  alt="GLX"
+                  className="h-10 w-10 rounded-full object-cover"
+                />
                 <div className="text-left text-white">
                   <p className="text-sm font-semibold leading-tight">PERFORMANCE</p>
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">CONTROL TOWER</p>
@@ -445,7 +453,11 @@ export default function ControlTowerClientLayout({
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-white/10">
             <button type="button" className="flex items-center gap-3" onClick={goHomeForRole}>
-              <div className="h-9 w-9 rounded bg-[#e67e22] flex items-center justify-center text-sm font-bold text-white">GLX</div>
+              <img
+                src="/images/logo-badge.jpg"
+                alt="GLX"
+                className="h-10 w-10 rounded-full object-cover"
+              />
               <div className="text-left">
                 <p className="text-sm font-semibold leading-tight">PERFORMANCE</p>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500">CONTROL TOWER</p>
@@ -545,6 +557,3 @@ export default function ControlTowerClientLayout({
     </div>
   );
 }
-
-
-

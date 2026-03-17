@@ -65,6 +65,15 @@ function badge(priority: Priority) {
   return { label: 'OK', className: 'green' };
 }
 
+function renderMoneyValueWithSmallSymbol(value: string) {
+  if (!value.startsWith('R$')) return value;
+  return (
+    <>
+      <span className="money-symbol">R$</span> {value.replace(/^R\$\s*/, '')}
+    </>
+  );
+}
+
 const EMPTY_TEAM_MEMBER_FORM: TeamMemberForm = {
   name: '',
   role: '',
@@ -629,7 +638,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       {activeTab === 0 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Visão CEO — Pro</h2></div>
         <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Bruta')}</div><div className="overview-card-value">{fmt(kpis.grossRevenue)}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Período</span></div></div>
+          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Bruta')}</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(kpis.grossRevenue))}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Período</span></div></div>
           <div className="overview-card"><div className="overview-card-label">Margem</div><div className="overview-card-value" style={{color:kpis.margin>=20?'var(--green)':'var(--red)'}}>{kpis.margin.toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">NPS</div><div className="overview-card-value" style={{color:kpis.avgNPS>=8?'var(--green)':'var(--yellow)'}}>{kpis.avgNPS.toFixed(1)}</div></div>
           <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
