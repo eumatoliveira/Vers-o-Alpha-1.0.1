@@ -4,6 +4,10 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { getChartTheme } from '../utils/chartOptions';
 import FilterBar from './FilterBar';
 import IntegrationSection from './IntegrationSection';
+import { AgendaNoShowModule } from './modules/AgendaNoShowModule';
+import { FinanceiroModule } from './modules/FinanceiroModule';
+import { MarketingModule } from './modules/MarketingModule';
+import { OperacaoUXModule } from './modules/OperacaoUXModule';
 import {
   type Appointment, Filters, getAllAppointments, applyFilters, computeKPIs,
   computeByProfessional, computeByChannel, computeByProcedure,
@@ -138,6 +142,41 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       };
     });
   }, [sortedFiltered]);
+  const agendaWeeksForModule = useMemo(() => {
+    const buckets = new Map<string, typeof filtered>();
+    sortedFiltered.forEach((row) => {
+      const key = weekKey(row.date);
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(row);
+    });
+    return Array.from(buckets.entries()).sort((a,b)=>a[0].localeCompare(b[0])).slice(-8).map(([key, rows], idx) => {
+      const total = rows.length;
+      const realized = rows.filter(r => r.status === 'Realizada').length;
+      const noShows = rows.filter(r => r.status === 'No-Show').length;
+      const canceled = rows.filter(r => r.status === 'Cancelada').length;
+      const confirmed = rows.filter(r => r.status === 'Confirmada').length;
+      const weeklyTarget = Math.max(16, Math.round(total * 0.85));
+      const cancelNoticeRate = canceled ? Math.min(92, Math.max(22, 52 + idx * 4 - (canceled % 3) * 2)) : 0;
+      const leadTimeDays = total ? rows.reduce((s, r, i) => s + 0.9 + (r.waitMinutes/60)*0.9 + (i%4)*0.45, 0) / total : 0;
+      const d = new Date(key + 'T00:00:00');
+      const label = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+      return { label, weekKey: key, total, realized, noShows, canceled, confirmed, noShowRate: total ? (noShows/total)*100 : 0, occupancyRate: total ? (realized/Math.max(total, Math.ceil(total*1.04)))*100 : 0, confirmationRate: total ? (confirmed/total)*100 : 0, cancelNoticeRate, weeklyTarget, leadTimeDays };
+    });
+  }, [sortedFiltered]);
+  const financeWeeksForModule = useMemo(() => {
+    return weeklyTrend.map((w, idx) => {
+      const gross = w.grossRevenue;
+      const conventionGlosas = gross * (0.015 + (idx % 3) * 0.004);
+      const cancelLoss = gross * (0.035 + (idx % 4) * 0.006);
+      const delinquency = gross * (0.03 + (idx % 5) * 0.007);
+      const chargebacks = gross * (0.01 + (idx % 3) * 0.003);
+      const net = Math.max(0, gross - cancelLoss - delinquency - chargebacks - conventionGlosas);
+      const fixedExpenses = net * (0.42 + (idx % 4) * 0.045);
+      const variableCosts = w.totalCost * 0.55;
+      const profit = net - fixedExpenses - variableCosts;
+      return { label: w.label, gross, net, cancelLoss, delinquency, chargebacks, conventionGlosas, netPctGross: gross > 0 ? (net / gross) * 100 : 0, marginPct: net > 0 ? (profit / net) * 100 : 0, ticketAvg: w.avgTicket, ticketBenchmark: 700 + (idx % 2) * 35, delinquencyPct: gross > 0 ? (delinquency / gross) * 100 : 0, fixedPct: net > 0 ? (fixedExpenses / net) * 100 : 0, receiptsCount: Math.max(1, w.realized), consultations: Math.max(1, w.realized), d20ProgressPct: 62 + idx * 4, d20ThresholdPct: 80 };
+    });
+  }, [weeklyTrend]);
   const segmentedNoShow = useMemo(() => {
     const byDoctor = byProf.map(p => ({ segment: `Médico: ${p.name}`, noShowRate: p.noShowRate, n: p.total }));
     const byChannelSeg = activeChannels.map(c => ({ segment: `Canal: ${c.name}`, noShowRate: c.noShowRate + (c.name.includes('Instagram') ? 10 : 0), n: c.total }));
@@ -634,70 +673,118 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
     <div className="animate-fade-in" key={activeTab}>
       {showFilterBar ? <FilterBar filters={filters} onChange={onFiltersChange} options={filterOptions} /> : null}
 
-      {/* ===== VISÃO CEO PRO ===== */}
-      {activeTab === 0 && (<>
-        <div className="section-header"><h2><span className="orange-bar" /> Visão CEO — Pro</h2></div>
-        <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">{moneyTitle('Receita Bruta')}</div><div className="overview-card-value">{renderMoneyValueWithSmallSymbol(fmt(kpis.grossRevenue))}</div><div className="overview-card-info"><div className="dot" style={{background:'var(--green)'}}/><span>Período</span></div></div>
-          <div className="overview-card"><div className="overview-card-label">Margem</div><div className="overview-card-value" style={{color:kpis.margin>=20?'var(--green)':'var(--red)'}}>{kpis.margin.toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">NPS</div><div className="overview-card-value" style={{color:kpis.avgNPS>=8?'var(--green)':'var(--yellow)'}}>{kpis.avgNPS.toFixed(1)}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Receita Semanal (Bruto × Líquido)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'area'},fill:{type:'gradient',gradient:{shadeIntensity:1,opacityFrom:0.4,opacityTo:0}},colors:['#ff5a1f','#45a29e'],xaxis:{...ct.xaxis,categories:weeklyTrend.map(w=>w.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'Bruto',data:weeklyTrend.map(w=>Math.round(w.grossRevenue))},{name:'Líquido',data:weeklyTrend.map(w=>Math.round(w.netRevenue))}]} type="area" height={230}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Ocupação Semanal</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth',width:3},colors:['#ff5a1f'],markers:{size:4},annotations:{yaxis:[{y:75,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 75%',style:{color:'#fff',background:'#22c55e'}}}]},xaxis:{...ct.xaxis,categories:weeklyTrend.map(w=>w.label)}}} series={[{name:'Ocupação %',data:weeklyTrend.map(w=>+w.occupancyRate.toFixed(1))}]} type="line" height={230}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Score por Área</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'radar'},xaxis:{categories:['Agenda','Financeiro','Marketing','Operação','Experiência']},yaxis:{show:false},colors:['#ff5a1f']}} series={[{name:'Score',data:[Math.round(kpis.occupancyRate/10),Math.round(kpis.margin*5/20),Math.round(kpis.leads/40),Math.round(kpis.avgNPS),Math.round(kpis.returnRate/5)]}]} type="radar" height={230}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Indicadores Semáforo</span></div><div className="chart-card-body" style={{padding:14}}>
-            <table className="data-table"><thead><tr><th>Indicador</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>
-              <tr><td>No-Show</td><td style={{fontWeight:700}}>{kpis.noShowRate.toFixed(1)}%</td><td>{'<'}10%</td><td><span className={`chart-card-badge ${kpis.noShowRate<=10?'green':kpis.noShowRate<=15?'yellow':'red'}`} style={{display:'inline-block'}}>{kpis.noShowRate<=10?'OK':kpis.noShowRate<=15?'ATENÇÃO':'CRÍTICO'}</span></td></tr>
-              <tr><td>Ocupação</td><td style={{fontWeight:700}}>{kpis.occupancyRate.toFixed(1)}%</td><td>{'>'}75%</td><td><span className={`chart-card-badge ${kpis.occupancyRate>=75?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.occupancyRate>=75?'OK':'ATENÇÃO'}</span></td></tr>
-              <tr><td>NPS</td><td style={{fontWeight:700}}>{kpis.avgNPS.toFixed(1)}</td><td>{'>'}8.0</td><td><span className={`chart-card-badge ${kpis.avgNPS>=8?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.avgNPS>=8?'OK':'ATENÇÃO'}</span></td></tr>
-              <tr><td>Margem</td><td style={{fontWeight:700}}>{kpis.margin.toFixed(1)}%</td><td>{'>'}20%</td><td><span className={`chart-card-badge ${kpis.margin>=20?'green':'red'}`} style={{display:'inline-block'}}>{kpis.margin>=20?'OK':'CRÍTICO'}</span></td></tr>
-              <tr><td>CAC</td><td style={{fontWeight:700}}>{fmt(kpis.avgCAC)}</td><td>{'<'}{formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}</td><td><span className={`chart-card-badge ${kpis.avgCAC<=150?'green':'red'}`} style={{display:'inline-block'}}>{kpis.avgCAC<=150?'OK':'CRÍTICO'}</span></td></tr>
-              <tr><td>Ticket Médio</td><td style={{fontWeight:700}}>{fmt(kpis.avgTicket)}</td><td>{'>'}{formatMoney(convertMoneyValue(300), { maximumFractionDigits: 0 })}</td><td><span className={`chart-card-badge ${kpis.avgTicket>=300?'green':'yellow'}`} style={{display:'inline-block'}}>{kpis.avgTicket>=300?'OK':'ATENÇÃO'}</span></td></tr>
-            </tbody></table>
-          </div></div>
-        </div>
+      {/* ===== VISÃO CEO PRO — SCORE CARDS ===== */}
+      {activeTab === 0 && (() => {
+        const CL = { green:'#1D9E75', amber:'#EF9F27', red:'#E24B4A' };
+        // color helper: inverted=true means lower is better
+        const cl = (v:number, good:number, warn:number, inverted=false): string =>
+          inverted ? (v <= good ? CL.green : v <= warn ? CL.amber : CL.red)
+                   : (v >= good ? CL.green : v >= warn ? CL.amber : CL.red);
 
-        <div className="section-header"><h2><span className="orange-bar" /> Alertas e Ação</h2></div>
-        <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">No-Show Rate</div><div className="overview-card-value" style={{color:kpis.noShowRate>10?'var(--red)':'var(--green)'}}>{kpis.noShowRate.toFixed(1)}%</div><div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5}}>Percentual de faltas sobre todos os agendamentos.</div></div>
-          <div className="overview-card"><div className="overview-card-label">Cancelamentos</div><div className="overview-card-value">{kpis.canceled}</div><div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5}}>Total de agendas canceladas antes do atendimento.</div></div>
-          <div className="overview-card"><div className="overview-card-label">Espera Média</div><div className="overview-card-value" style={{color:kpis.avgWait>15?'var(--yellow)':'var(--green)'}}>{kpis.avgWait.toFixed(0)} min</div></div>
-          <div className="overview-card"><div className="overview-card-label">Detratores NPS</div><div className="overview-card-value" style={{color:'var(--red)'}}>{kpis.detractors}</div><div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5}}>Pacientes com nota baixa e maior risco de reclamação.</div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">No-Show vs Cancelamentos (Semanal)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Compara faltas e cancelamentos por semana</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{borderRadius:4,columnWidth:'40%'}},colors:['#eab308','#ef4444'],xaxis:{...ct.xaxis,categories:weeklyTrend.map(w=>w.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'No-Show',data:weeklyTrend.map(w=>w.noShows)},{name:'Cancelados',data:weeklyTrend.map(w=>w.canceled)}]} type="bar" height={230}/>
-            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,padding:'4px 12px 0'}}>Mostra se a perda da agenda veio de faltas no dia ou de cancelamentos antecipados.</div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Heatmap Espera (Prof × Dia)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'heatmap'},colors:['#ff5a1f'],dataLabels:{enabled:true},plotOptions:{heatmap:{shadeIntensity:0.5,colorScale:{ranges:[{from:0,to:15,color:'#22c55e',name:'OK'},{from:16,to:25,color:'#eab308',name:'Atenção'},{from:26,to:60,color:'#ef4444',name:'Crítico'}]}}}}} series={byProf.map(p=>({name:p.name,data:byWeekday.map(w=>({x:w.name,y:Math.round(w.avgWait+(p.avgWait-kpis.avgWait)*0.5)}))}))} type="heatmap" height={200}/>
-            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,padding:'4px 12px 0'}}>Verde ? fluxo saud?vel; amarelo e vermelho apontam gargalos operacionais.</div>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">No-Show por Profissional</span><span style={{fontSize:10,color:'var(--text-muted)'}}>👆 Clique</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...profClick,chart:{...ct.chart,type:'bar',...profClick.chart},plotOptions:{bar:{distributed:true}},colors:['#ef4444','#eab308','#ff5a1f'],xaxis:{...ct.xaxis,categories:byProf.map(p=>p.name)},legend:{show:false}}} series={[{name:'No-Show %',data:byProf.map(p=>+p.noShowRate.toFixed(1))}]} type="bar" height={200}/>
-            <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,padding:'4px 12px 0'}}>Ajuda a localizar onde a taxa de falta est? mais concentrada dentro da equipe.</div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">Alertas Ativos</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Prioridades que pedem a??o operacional</span></div><div className="chart-card-body" style={{padding:14}}>
-            {kpis.noShowRate>10 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>No-Show Rate {kpis.noShowRate.toFixed(1)}% — acima da meta</span></div>}
-            {kpis.avgCAC>150 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge red" style={{display:'inline-block'}}>P1</span><span style={{color:'var(--text-secondary)',fontSize:12}}>CAC {fmt(kpis.avgCAC)} — acima do teto {formatMoney(convertMoneyValue(150), { maximumFractionDigits: 0 })}</span></div>}
-            {kpis.avgWait>15 && <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><span style={{color:'var(--text-secondary)',fontSize:12}}>Espera {kpis.avgWait.toFixed(0)}min — meta {'<'}15min</span></div>}
-            {kpis.avgNPS<8 && <div style={{display:'flex',alignItems:'center',gap:8}}><span className="chart-card-badge yellow" style={{display:'inline-block'}}>P2</span><span style={{color:'var(--text-secondary)',fontSize:12}}>NPS {kpis.avgNPS.toFixed(1)} — abaixo da meta 8.0</span></div>}
-          </div></div>
-        </div>
-      
-      </>)}
+        // Period-aware label suffix
+        const pSuffix = filters.period === '7d'   ? '/ SEMANA'
+                      : filters.period === '15d'  ? '/ QUINZENA'
+                      : filters.period === '30d'  ? '/ MÊS'
+                      : filters.period === '3m'   ? '/ TRIMESTRE'
+                      : filters.period === '6m'   ? '/ SEMESTRE'
+                      : '/ ANO';
+
+        // Period-aware description suffix for contextual labels
+        const pDesc = filters.period === '7d'   ? 'na semana'
+                    : filters.period === '15d'  ? 'na quinzena'
+                    : filters.period === '30d'  ? 'no mês'
+                    : filters.period === '3m'   ? 'no trimestre'
+                    : filters.period === '6m'   ? 'no semestre'
+                    : 'no ano';
+
+        const convLeadToAppt = (() => {
+          const latest = marketingProWeeks[marketingProWeeks.length - 1];
+          return latest?.leadsTotal > 0 ? (latest.booked / latest.leadsTotal) * 100 : 0;
+        })();
+        const bestRoi = marketingChannelStats.length > 0
+          ? marketingChannelStats.reduce((b, c) => c.roi > b.roi ? c : b, marketingChannelStats[0])
+          : null;
+        const roiColor = (bestRoi?.roi ?? 0) >= 200 ? CL.green : (bestRoi?.roi ?? 0) >= 100 ? CL.amber : CL.red;
+        const roiLabel = bestRoi ? `${bestRoi.roi.toFixed(0)}% (${bestRoi.name})` : '—';
+
+        const cols = [
+          {
+            icon: '📋', title: 'AGENDA & NO-SHOW',
+            cards: [
+              { label:'TAXA DE OCUPAÇÃO (%)',              value:`${kpis.occupancyRate.toFixed(1)}%`,       color:cl(kpis.occupancyRate,80,60),         desc:`Meta > 80% — agenda preenchida ${pDesc}?` },
+              { label:'TAXA DE NO-SHOW (%)',               value:`${kpis.noShowRate.toFixed(1)}%`,          color:cl(kpis.noShowRate,8,12,true),        desc:`Meta < 8% — faltas ${pDesc}` },
+              { label:'CONFIRMAÇÕES REALIZADAS (%)',        value:`${kpis.confirmationRate.toFixed(1)}%`,    color:cl(kpis.confirmationRate,85,70),      desc:'Meta > 85% — pacientes confirmaram?' },
+              { label:'LEAD TIME DO AGENDAMENTO (DIAS)',    value:`${kpis.leadTimeDays.toFixed(1)}d`,        color:cl(kpis.leadTimeDays,3,7,true),       desc:'Meta < 3 dias — antecedência do agendamento' },
+            ],
+          },
+          {
+            icon: '💰', title: 'FINANCEIRO',
+            cards: [
+              { label:`FATURAMENTO BRUTO ${pSuffix}`,        value:fmt(kpis.grossRevenue),                   color:CL.amber,                             desc:`Total recebido ${pDesc}` },
+              { label:'MARGEM LÍQUIDA (%)',                 value:`${kpis.margin.toFixed(1)}%`,             color:cl(kpis.margin,25,15),                desc:'Meta > 20% — seu lucro real por R$100' },
+              { label:'INADIMPLÊNCIA (%)',                  value:`${kpis.inadimplenciaRate.toFixed(1)}%`,  color:cl(kpis.inadimplenciaRate,4,8,true),  desc:'Meta < 4% — quem não pagou?' },
+              { label:'DESPESAS FIXAS / RECEITA (%)',       value:`${kpis.fixedExpenseRatio.toFixed(1)}%`,  color:cl(kpis.fixedExpenseRatio,45,55,true),desc:'Meta < 45% — custo fixo sobre receita' },
+            ],
+          },
+          {
+            icon: '🚀', title: 'MARKETING & CAPTAÇÃO',
+            cards: [
+              { label:`LEADS GERADOS ${pSuffix}`,            value:`${kpis.leads}`,                          color:kpis.leads>=80?CL.green:kpis.leads>=40?CL.amber:CL.red, desc:`Novos interessados captados ${pDesc}` },
+              { label:'CONVERSÃO LEAD → AGENDAMENTO (%)',   value:`${convLeadToAppt.toFixed(1)}%`,          color:cl(convLeadToAppt,22,15),             desc:'Meta > 25% — quantos viraram consulta?' },
+              { label:'CPL — CUSTO POR PACIENTE',          value:fmt(kpis.cpl),                            color:cl(kpis.cpl,kpis.avgTicket/4,kpis.avgTicket*0.6,true), desc:'Custo por novo paciente captado' },
+              { label:'ROI POR CANAL (%)',                  value:roiLabel,                                 color:roiColor,                             desc:'Meta > 200% — marketing compensa?' },
+            ],
+          },
+          {
+            icon: '⚙️', title: 'OPERAÇÃO & UX',
+            cards: [
+              { label:'NPS GERAL (0–10)',                   value:`${kpis.avgNPS.toFixed(1)}`,              color:cl(kpis.avgNPS,8.5,7),                desc:'Meta > 8,5 — paciente indicaria você?' },
+              { label:'TEMPO MÉDIO DE ESPERA (MIN)',        value:`${kpis.avgWait.toFixed(0)} min`,         color:cl(kpis.avgWait,12,20,true),          desc:'Meta < 12 min em sala de espera' },
+              { label:'TAXA DE RETORNO 90 DIAS (%)',        value:`${kpis.returnRate.toFixed(1)}%`,         color:cl(kpis.returnRate,40,25),            desc:'Meta > 40% — paciente voltou em 90 dias?' },
+              { label:'SLA DE RESPOSTA AO LEAD (H)',        value:`${kpis.slaLeadHours.toFixed(2)}h`,       color:cl(kpis.slaLeadHours,1,2,true),       desc:'Meta < 1h para responder o paciente' },
+            ],
+          },
+        ];
+
+        return (<>
+          <div className="section-header"><h2><span className="orange-bar" /> Visão CEO — Painel Executivo Completo</h2></div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:8 }}>
+            {cols.map(col => (
+              <div key={col.title}>
+                {/* Column header */}
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:12, paddingBottom:8, borderBottom:'1px solid var(--border-card,#e5e7eb)' }}>
+                  <span style={{ fontSize:13 }}>{col.icon}</span>
+                  <span style={{ fontSize:10, fontWeight:700, letterSpacing:1, color:'var(--text-muted)', textTransform:'uppercase' }}>{col.title}</span>
+                </div>
+                {/* Score cards */}
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {col.cards.map(card => (
+                    <div key={card.label} style={{
+                      background:'var(--panel-bg,#fff)',
+                      borderRadius:12,
+                      boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
+                      border:'1px solid var(--border-card,#e5e7eb)',
+                      borderTop:`4px solid ${card.color}`,
+                      padding:'14px 16px',
+                      transition:'box-shadow 200ms ease',
+                    }}>
+                      <div style={{ fontSize:10, fontWeight:700, letterSpacing:0.8, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:8, lineHeight:1.3 }}>
+                        {card.label}
+                      </div>
+                      <div style={{ fontSize:28, fontWeight:800, color:card.color, lineHeight:1.1, marginBottom:6, wordBreak:'break-word' }}>
+                        {card.value}
+                      </div>
+                      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.4 }}>
+                        {card.desc}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>);
+      })()}
 
       {/* ===== FINANCEIRO AVANCADO ===== */}
       {activeTab === 1 && (<>
@@ -708,41 +795,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
           <div className="overview-card"><div className="overview-card-label">{moneyTitle("Aging >90d")}</div><div className="overview-card-value">{fmt(agingReceivables.buckets.find((b) => b.label === '>90d')?.value ?? 0)}</div></div>
           <div className="overview-card"><div className="overview-card-label">{moneyTitle('Break-even')}</div><div className="overview-card-value">{fmt(breakEven.breakEvenRevenue)}</div></div>
         </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 DRE Semanal / EBITDA Operacional</span></div><div className="chart-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
-              <ReactApexChart options={{ ...ct, chart: { type: 'bar' }, plotOptions: { bar: { colors: { ranges: [{ from: -9999999, to: -1, color: '#ef4444' }, { from: 0, to: 9999999, color: '#22c55e' }] }, columnWidth: '52%' } }, xaxis: { type: 'category' as const }, legend: { show: false }, dataLabels: { enabled: true, formatter: (v: number) => fmt(v) }, tooltip: { y: { formatter: (v: number) => fmt(v) } } }} series={[{ name: 'DRE', data: (() => { const l = financeAdvWeeks[financeAdvWeeks.length - 1]; if (!l) return []; return [{ x: 'RL', y: Math.round(l.netRevenue) }, { x: 'CMV', y: -Math.round(l.cmv) }, { x: 'Variaveis', y: -Math.round(l.variable) }, { x: 'Fixos', y: -Math.round(l.fixedProrata) }, { x: 'EBITDA', y: Math.round(l.ebitda) }]; })() }]} type="bar" height={250} />
-              <ReactApexChart options={{ ...ct, chart: { ...ct.chart, type: 'line' }, stroke: { curve: 'smooth' as const, width: [3, 2] }, colors: ['#22c55e', '#3b82f6'], xaxis: { ...ct.xaxis, categories: financeAdvWeeks.map((w) => w.label) }, annotations: { yaxis: [{ y: 20, borderColor: '#22c55e', strokeDashArray: 4, label: { text: 'Meta 20%', style: { color: '#fff', background: '#22c55e' } } }, { y: 15, borderColor: '#eab308', strokeDashArray: 4, label: { text: 'P2', style: { color: '#111', background: '#eab308' } } }, { y: 10, borderColor: '#ef4444', strokeDashArray: 4, label: { text: 'P1', style: { color: '#fff', background: '#ef4444' } } }] }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={[{ name: 'EBITDA %', data: financeAdvWeeks.map((w) => +w.ebitdaMargin.toFixed(1)) }, { name: 'Meta', data: financeAdvWeeks.map(() => 20) }]} type="line" height={250} />
-            </div>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">02 Margem por Servico / Procedimento</span></div><div className="chart-card-body">
-            <ReactApexChart options={{ ...ct, ...procClick, chart: { ...ct.chart, type: 'bar', ...procClick.chart }, plotOptions: { bar: { horizontal: true, borderRadius: 4 } }, colors: ['#22c55e', '#ef4444'], xaxis: { ...ct.xaxis, max: 100 }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={[{ name: 'Margem %', data: serviceMargins.map((s) => ({ x: s.name, y: +s.margin.toFixed(1) })) }, { name: 'Impacto +5% (indice)', data: serviceMargins.map((s) => ({ x: s.name, y: Math.min(100, Math.max(0, s.simulatedUp5PctEbitdaImpact / 200)) })) }]} type="bar" height={240} />
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">03 Margem por Profissional</span></div><div className="chart-card-body">
-            <ReactApexChart options={{ ...ct, ...profClick, chart: { ...ct.chart, type: 'bar', ...profClick.chart }, plotOptions: { bar: { borderRadius: 4, columnWidth: '48%', distributed: true } }, colors: profMargins.map((p) => p.margin < 0 ? '#ef4444' : '#22c55e'), xaxis: { ...ct.xaxis, categories: profMargins.map((p) => p.name) }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={[{ name: 'Margem %', data: profMargins.map((p) => +p.margin.toFixed(1)) }, { name: 'Score', data: profMargins.map((p) => +p.productivityScore.toFixed(0)) }]} type="bar" height={240} />
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">05 Recebiveis - Aging</span></div><div className="chart-card-body">
-            <ReactApexChart options={{ ...ct, chart: { type: 'bar', stacked: true }, plotOptions: { bar: { horizontal: true, borderRadius: 4 } }, colors: ['#22c55e', '#eab308', '#f97316', '#ef4444'], xaxis: { ...ct.xaxis }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={agingReceivables.buckets.map((b) => ({ name: b.label, data: [Math.round(b.value)] }))} type="bar" height={220} />
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">06 Projecao de Caixa (8 semanas)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{ ...ct, chart: { ...ct.chart, type: 'line' }, stroke: { curve: 'smooth' as const, width: [3, 3, 3] }, colors: ['#ef4444', '#3b82f6', '#22c55e'], xaxis: { ...ct.xaxis, categories: cashProjection8w.labels }, annotations: { yaxis: [{ y: 0, borderColor: '#ef4444', strokeDashArray: 4, label: { text: 'Zero', style: { color: '#fff', background: '#ef4444' } } }] }, legend: { ...ct.legend, show: true, position: 'bottom' as const } }} series={[{ name: 'Conservador', data: cashProjection8w.scenarioCons }, { name: 'Base', data: cashProjection8w.scenarioBase }, { name: 'Otimista', data: cashProjection8w.scenarioOpt }]} type="line" height={220} />
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Concentracao de Receita (%)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{ ...ct, chart: { type: 'donut' }, labels: [...(revenueConcentration.labels.length ? revenueConcentration.labels : ['Top1', 'Top2', 'Top3']), 'Outros'], colors: ['#ff5a1f', '#3b82f6', '#22c55e', '#475569'], plotOptions: { pie: { donut: { size: '60%' } } }, legend: { ...ct.legend, position: 'bottom' as const } }} series={[...(revenueConcentration.values.length ? revenueConcentration.values : [0, 0, 0]), Math.max(0, 100 - revenueConcentration.values.reduce((s, v) => s + v, 0))]} type="donut" height={220} />
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">08 Break-Even - Ponto de Equilibrio</span></div><div className="chart-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <ReactApexChart options={{ ...ct, chart: { type: 'bar' }, plotOptions: { bar: { borderRadius: 4, columnWidth: '52%' } }, colors: ['#3b82f6', '#22c55e', '#ef4444'], xaxis: { ...ct.xaxis, categories: ['D15 %', 'D20 %', 'Meta 90%'] }, legend: { show: false } }} series={[{ name: 'Cobertura', data: [+breakEven.day15Coverage.toFixed(1), +breakEven.day20Coverage.toFixed(1), 90] }]} type="bar" height={220} />
-              <ReactApexChart options={{ ...ct, chart: { type: 'scatter' }, colors: ['#8b5cf6'], xaxis: { ...ct.xaxis, title: { text: 'Ticket' } }, yaxis: { title: { text: 'Volume' } }, legend: { show: false } }} series={[{ name: 'Simulador', data: breakEven.sim.map((s) => ({ x: s.ticket, y: s.volume })) }]} type="scatter" height={220} />
-            </div>
-          </div></div>
-        </div>
+        <FinanceiroModule financeWeeks={financeWeeksForModule} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== AGENDA / OTIMIZAÇÃO ===== */}
       {activeTab === 2 && (<>
@@ -753,33 +806,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
           <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">Ociosidade</div><div className="overview-card-value" style={{color:'var(--yellow)'}}>{(100-kpis.occupancyRate).toFixed(1)}%</div></div>
         </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 No-Show Segmentado (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Linha + drill-down por segmento</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth' as const,width:[3,2,2,2]},colors:['#ef4444','#f97316','#3b82f6','#22c55e'],markers:{size:[4,0,0,0]},xaxis:{...ct.xaxis,categories:segmentedNoShow.slice(0,8).map(s=>s.segment.split(': ')[1] || s.segment)},annotations:{yaxis:[{y:20,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 20%',style:{color:'#fff',background:'#ef4444'}}},{y:12,borderColor:'#eab308',strokeDashArray:4,label:{text:'P2 12-20',style:{color:'#111',background:'#eab308'}}},{y:8,borderColor:'#3b82f6',strokeDashArray:4,label:{text:'P3 8-12',style:{color:'#fff',background:'#3b82f6'}}}]},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'No-show % segmento',data:segmentedNoShow.slice(0,8).map(s=>+s.noShowRate.toFixed(1))},{name:'P1',data:segmentedNoShow.slice(0,8).map(()=>20)},{name:'P2',data:segmentedNoShow.slice(0,8).map(()=>12)},{name:'Meta',data:segmentedNoShow.slice(0,8).map(()=>8)}]} type="line" height={230}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">02 Ocupação por Profissional/Slot (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Slots ociosos e redistribuição</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,barHeight:'58%',borderRadius:4}},colors:slotOccupancyByProf.map(s=>s.occupancy<55?'#ef4444':s.occupancy<70?'#eab308':s.occupancy<80?'#3b82f6':'#22c55e'),xaxis:{...ct.xaxis,max:100},annotations:{xaxis:[{x:80,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 80%',style:{color:'#fff',background:'#22c55e'}}}]},legend:{show:false}}} series={[{name:'Ocupação %',data:slotOccupancyByProf.map(s=>({x:s.label,y:+s.occupancy.toFixed(1)}))}]} type="bar" height={230}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">03 Heatmap Dia × Hora × Profissional</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Heatmap multi-dimensional interativo</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'heatmap'},dataLabels:{enabled:true},plotOptions:{heatmap:{shadeIntensity:0.55,colorScale:{ranges:[{from:0,to:39,color:'#ef4444',name:'<40%'},{from:40,to:69,color:'#eab308',name:'40-70%'},{from:70,to:100,color:'#22c55e',name:'>70%'}]}}}}} series={heatmapDayHourProf} type="heatmap" height={240}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">04 Lead Time do Agendamento (dias)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth' as const,width:[3,2,2]},colors:['#8b5cf6','#eab308','#ef4444'],xaxis:{...ct.xaxis,categories:agendaProWeeks.map(w=>w.label)},annotations:{yaxis:[{y:3,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 3d',style:{color:'#fff',background:'#22c55e'}}},{y:7,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 7d',style:{color:'#fff',background:'#ef4444'}}}]},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'Lead time (d)',data:agendaProWeeks.map(w=>+w.leadTimeDays.toFixed(1))},{name:'P2 (3-7d)',data:agendaProWeeks.map(()=>3)},{name:'P1 (7d)',data:agendaProWeeks.map(()=>7)}]} type="line" height={240}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">05 Cancelamentos por Motivo</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Barra ordenada por frequência</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,barHeight:'58%',borderRadius:4}},colors:cancelReasons.map(r=>r.pct>40?'#ef4444':r.pct>30?'#eab308':'#22c55e'),xaxis:{...ct.xaxis},annotations:{xaxis:[{x:30,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 30%',style:{color:'#fff',background:'#22c55e'}}},{x:40,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 40%',style:{color:'#fff',background:'#ef4444'}}}]},legend:{show:false}}} series={[{name:'Motivo %',data:cancelReasons.map(r=>({x:r.reason,y:+r.pct.toFixed(1)}))}]} type="bar" height={230}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">06 Simulador de Overbooking Controlado</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Trade-off NPS vs Receita</span></div><div className="chart-card-body">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{borderRadius:4,columnWidth:'55%'}},colors:['#3b82f6','#22c55e','#ff5a1f'],xaxis:{...ct.xaxis,categories:['No-show hist.','Cobertura alvo 60%','Slots ativados']},legend:{show:false}}} series={[{name:'Slots',data:[overbookingSim.noShowHist, overbookingSim.coverTarget, overbookingSim.activatedSlots]}]} type="bar" height={210}/>
-              <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth' as const,width:[3,3]},colors:['#22c55e','#ef4444'],xaxis:{...ct.xaxis,categories:overbookingSim.npsTradeoff.map(p=>`${p.x} slots`)},annotations:{yaxis:[{y:20,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 espera >20min',style:{color:'#fff',background:'#ef4444'}}}]},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'Receita extra (R$)',data:overbookingSim.npsTradeoff.map(p=>Math.round(p.revenue))},{name:'NPS (x10)',data:overbookingSim.npsTradeoff.map(p=>+(p.nps*10).toFixed(1))}]} type="line" height={210}/>
-            </div>
-          </div></div>
-        </div>
+        <AgendaNoShowModule agendaWeeks={agendaWeeksForModule} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== MARKETING / UNIT ECONOMICS ===== */}
       {activeTab === 3 && (<>
@@ -790,38 +817,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
           <div className="overview-card"><div className="overview-card-label">{moneyTitle('LTV Médio')}</div><div className="overview-card-value">{fmt(marketingChannelStats.reduce((s,r)=>s+r.ltv,0)/Math.max(1,marketingChannelStats.length))}</div></div>
           <div className="overview-card"><div className="overview-card-label">LTV/CAC</div><div className="overview-card-value" style={{color:(marketingChannelStats.reduce((s,r)=>s+r.ltvCac,0)/Math.max(1,marketingChannelStats.length))>=3?'var(--green)':'var(--yellow)'}}>{(marketingChannelStats.reduce((s,r)=>s+r.ltvCac,0)/Math.max(1,marketingChannelStats.length)).toFixed(1)}x</div></div>
         </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 Leads por Canal / Semana</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',stacked:true,...channelClick.chart},plotOptions:{bar:{borderRadius:4,columnWidth:'55%'}},colors:['#ff5a1f','#3b82f6','#eab308','#22c55e','#8b5cf6','#45a29e'],xaxis:{...ct.xaxis,categories:marketingProWeeks.map(w=>w.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={activeChannels.map((ch)=>({name:ch.name,data:marketingProWeeks.map(w=>w.channelRows.find(r=>r.name===ch.name)?.leads ?? 0)}))} type="bar" height={240}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">{moneyTitle('02 CAC por Canal')}</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',...channelClick.chart},plotOptions:{bar:{distributed:true,columnWidth:'52%'}},colors:marketingChannelStats.map(r=>r.cac>r.avgTicket?'#ef4444':'#22c55e'),xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const},tooltip:{y:{formatter:(v:number)=>fmt(v)}}}} series={[{name:'CAC',data:marketingChannelStats.map(r=>Math.round(r.cac))},{name:'Ticket medio canal',data:marketingChannelStats.map(r=>Math.round(r.avgTicket))}]} type="bar" height={240}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">03 Funil Lead {'->'} Consulta (%)</span></div><div className="chart-card-body">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,barHeight:'58%'}},colors:['#ff5a1f'],xaxis:{...ct.xaxis,max:100},legend:{show:false}}} series={[{name:'Conversao %',data:(()=>{const l=marketingProWeeks[marketingProWeeks.length-1]; if(!l||!l.leadsTotal) return [{x:'Leads',y:100}]; return [{x:'Leads',y:100},{x:'Contato',y:+((l.contacts/l.leadsTotal)*100).toFixed(1)},{x:'Agendamento',y:+((l.booked/l.leadsTotal)*100).toFixed(1)},{x:'Comparecimento',y:+((l.attended/l.leadsTotal)*100).toFixed(1)}];})()}]} type="bar" height={220}/>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,barHeight:'58%'}},colors:['#64748b','#f97316','#ef4444'],xaxis:{...ct.xaxis,max:100},legend:{show:false}}} series={[{name:'Perda %',data:(()=>{const l=marketingProWeeks[marketingProWeeks.length-1]; if(!l) return []; const a=l.leadsTotal?100-(l.contacts/l.leadsTotal)*100:0; const b=l.contacts?100-(l.booked/l.contacts)*100:0; const c=l.booked?100-(l.attended/l.booked)*100:0; return [{x:'Lead->Contato',y:+a.toFixed(1)},{x:'Contato->Agend',y:+b.toFixed(1)},{x:'Agend->Consulta',y:+c.toFixed(1)}];})()}]} type="bar" height={220}/>
-            </div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">04 LTV / LTV:CAC</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{columnWidth:'48%'}},colors:['#22c55e','#3b82f6','#ef4444'],xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const},tooltip:{y:{formatter:(v:number, ctx?: any)=>ctx?.seriesIndex === 2 ? `${v.toFixed(1)}x` : fmt(v)}}}} series={[{name:'LTV',data:marketingChannelStats.map(r=>Math.round(r.ltv))},{name:'CAC',data:marketingChannelStats.map(r=>Math.round(r.cac))},{name:'LTV:CAC x10',data:marketingChannelStats.map(r=>+(r.ltvCac*10).toFixed(1))}]} type="bar" height={240}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">05 ROI por Canal (%)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...channelClick,chart:{...ct.chart,type:'bar',...channelClick.chart},plotOptions:{bar:{horizontal:true,distributed:true,borderRadius:4}},colors:marketingChannelStats.map(r=>r.roi<0?'#ef4444':r.roi<200?'#eab308':'#22c55e'),xaxis:{...ct.xaxis},legend:{show:false}}} series={[{name:'ROI %',data:[...marketingChannelStats].sort((a,b)=>b.roi-a.roi).map(r=>({x:r.name,y:+r.roi.toFixed(1)}))}]} type="bar" height={230}/>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">06 Velocidade do Funil (dias)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth',width:[3,2,2]},colors:['#8b5cf6','#eab308','#ef4444'],xaxis:{...ct.xaxis,categories:marketingChannelStats.map(r=>r.name)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'Dias ate 1a consulta',data:marketingChannelStats.map(r=>+r.speedDays.toFixed(1))},{name:'P2 10d',data:marketingChannelStats.map(()=>10)},{name:'P1 15d',data:marketingChannelStats.map(()=>15)}]} type="line" height={230}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Waterfall Variacao de Receita</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{colors:{ranges:[{from:-999999,to:-1,color:'#ef4444'},{from:0,to:999999,color:'#22c55e'}]},columnWidth:'55%'}},xaxis:{type:'category' as const},legend:{show:false},dataLabels:{enabled:true,formatter:(v:number)=>fmt(v)},tooltip:{y:{formatter:(v:number)=>fmt(v)}}}} series={[{name:'Waterfall',data:(()=>{const cur=marketingProWeeks[marketingProWeeks.length-1]; const prev=marketingProWeeks[marketingProWeeks.length-2]; const prevRev=prev?.revenue ?? 0; const curRev=cur?.revenue ?? 0; const delta=curRev-prevRev; const vol=delta*0.35; const preco=delta*0.22; const mix=delta*0.16; const noShow=-Math.abs(delta*0.11); const ret=delta-(vol+preco+mix+noShow); return [{x:'Receita t-1',y:Math.round(prevRev)},{x:'Volume',y:Math.round(vol)},{x:'Preco',y:Math.round(preco)},{x:'Mix',y:Math.round(mix)},{x:'No-show',y:Math.round(noShow)},{x:'Retencao',y:Math.round(ret)},{x:'Receita t',y:Math.round(curRev)}];})()}]} type="bar" height={240}/>
-          </div></div>
-        </div>
+        <MarketingModule weeklyData={weeklyTrend} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== INTEGRAÇÕES ===== */}
       {activeTab === 4 && (
@@ -860,47 +856,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
           <div className="overview-card"><div className="overview-card-label">Retorno 90d</div><div className="overview-card-value">{(opsProByProfessional.reduce((s,r)=>s+r.return90,0)/Math.max(1,opsProByProfessional.length)).toFixed(1)}%</div></div>
           <div className="overview-card"><div className="overview-card-label">SLA Lead</div><div className="overview-card-value">{(receptionSLARanking.reduce((s,r)=>s+r.slaH,0)/Math.max(1,receptionSLARanking.length)).toFixed(1)}h</div></div>
         </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">01 NPS por Profissional (0-10)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Barra + tendencia mensal</span></div><div className="chart-card-body">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <ReactApexChart options={{...ct,...profClick,chart:{...ct.chart,type:'bar',...profClick.chart},plotOptions:{bar:{distributed:true,borderRadius:4}},colors:opsProByProfessional.map(p=>p.avgNPS<7.5?'#ef4444':'#22c55e'),xaxis:{...ct.xaxis,categories:opsProByProfessional.map(p=>p.name)},legend:{show:false},annotations:{yaxis:[{y:8,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 8.0',style:{color:'#fff',background:'#22c55e'}}},{y:7.5,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 7.5',style:{color:'#fff',background:'#ef4444'}}}]}}} series={[{name:'NPS',data:opsProByProfessional.map(p=>+p.avgNPS.toFixed(1))}]} type="bar" height={220}/>
-              <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth',width:[3,2]},colors:['#3b82f6','#22c55e'],xaxis:{...ct.xaxis,categories:opsProTrend.map(t=>t.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'NPS geral',data:opsProTrend.map(t=>+t.nps.toFixed(1))},{name:'Meta',data:opsProTrend.map(()=>8)}]} type="line" height={220}/>
-            </div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">02 Espera por Medico (min)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,...profClick,chart:{...ct.chart,type:'bar',...profClick.chart},plotOptions:{bar:{horizontal:true,distributed:true,borderRadius:4}},colors:opsProByProfessional.map(p=>p.waitByDoctor>30?'#ef4444':p.waitByDoctor>20?'#eab308':'#22c55e'),xaxis:{...ct.xaxis},legend:{show:false},annotations:{xaxis:[{x:12,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 12',style:{color:'#fff',background:'#22c55e'}}},{x:20,borderColor:'#eab308',strokeDashArray:4,label:{text:'P2 20',style:{color:'#111',background:'#eab308'}}},{x:30,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 30',style:{color:'#fff',background:'#ef4444'}}}]}}} series={[{name:'Espera',data:opsProByProfessional.map(p=>({x:p.name,y:p.waitByDoctor}))}]} type="bar" height={230}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">03 Retorno / Fidelizacao 90d (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Cohort por medico + procedimento</span></div><div className="chart-card-body">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{columnWidth:'48%',distributed:true}},colors:['#ff5a1f','#45a29e','#3b82f6'],xaxis:{...ct.xaxis,categories:opsProByProfessional.map(p=>p.name)},legend:{show:false},annotations:{yaxis:[{y:40,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 40%',style:{color:'#fff',background:'#22c55e'}}}]}}} series={[{name:'Retorno 90d',data:opsProByProfessional.map(p=>+p.return90.toFixed(1))}]} type="bar" height={220}/>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,borderRadius:4}},colors:opsCohortByProcedure.map(p=>p.return90<15?'#ef4444':p.return90<25?'#eab308':'#22c55e'),xaxis:{...ct.xaxis},legend:{show:false}}} series={[{name:'Cohort proc 90d',data:opsCohortByProcedure.map(p=>({x:p.name,y:+p.return90.toFixed(1)}))}]} type="bar" height={220}/>
-            </div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">04 SLA Resposta ao Lead (horas)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Ranking individual recepcao</span></div><div className="chart-card-body">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth',width:[3,2,2]},colors:['#8b5cf6','#eab308','#ef4444'],xaxis:{...ct.xaxis,categories:opsProTrend.map(t=>t.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'SLA lead (h)',data:opsProTrend.map(t=>t.slaLeadH)},{name:'P2 2h',data:opsProTrend.map(()=>2)},{name:'P1 4h',data:opsProTrend.map(()=>4)}]} type="line" height={220}/>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,borderRadius:4}},colors:receptionSLARanking.map(r=>r.slaH>4?'#ef4444':r.slaH>2?'#eab308':'#22c55e'),xaxis:{...ct.xaxis},legend:{show:false}}} series={[{name:'SLA por recepcao (h)',data:receptionSLARanking.map(r=>({x:r.name,y:r.slaH}))}]} type="bar" height={220}/>
-            </div>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">05 Produtividade por Area (% meta)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Radar + barra agrupada</span></div><div className="chart-card-body">
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              <ReactApexChart options={{...ct,chart:{type:'radar'},xaxis:{categories:areaProductivity.map(a=>a.area)},yaxis:{show:false},colors:['#22c55e']}} series={[{name:'Score composto',data:areaProductivity.map(a=>a.score)}]} type="radar" height={220}/>
-              <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{columnWidth:'46%'}},colors:['#3b82f6','#22c55e','#f97316'],xaxis:{...ct.xaxis,categories:areaProductivity.map(a=>a.area)},legend:{...ct.legend,show:true,position:'bottom' as const},annotations:{yaxis:[{y:85,borderColor:'#22c55e',strokeDashArray:4,label:{text:'Meta 85%',style:{color:'#fff',background:'#22c55e'}}},{y:75,borderColor:'#eab308',strokeDashArray:4,label:{text:'P2 75',style:{color:'#111',background:'#eab308'}}},{y:60,borderColor:'#ef4444',strokeDashArray:4,label:{text:'P1 60',style:{color:'#fff',background:'#ef4444'}}}]}}} series={[{name:'Produtividade',data:areaProductivity.map(a=>a.produtividade)},{name:'Qualidade',data:areaProductivity.map(a=>a.qualidade)},{name:'Aderencia',data:areaProductivity.map(a=>a.aderencia)}]} type="bar" height={220}/>
-            </div>
-          </div></div>
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">06 Cancelamentos com Motivo (%)</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{...ct.chart,type:'line'},stroke:{curve:'smooth',width:[3,2]},colors:['#f59e0b','#22c55e'],xaxis:{...ct.xaxis,categories:opsProTrend.map(t=>t.label)},legend:{...ct.legend,show:true,position:'bottom' as const}}} series={[{name:'% com motivo',data:opsProTrend.map(t=>+t.cancelWithReasonPct.toFixed(1))},{name:'Meta 80%',data:opsProTrend.map(()=>80)}]} type="line" height={220}/>
-          </div></div>
-        </div>
-        <div className="chart-grid">
-          <div className="chart-card"><div className="chart-card-header"><span className="chart-card-title">07 Status de Checklists / Rotinas (%)</span><span style={{fontSize:10,color:'var(--text-muted)'}}>Barra de progresso por area</span></div><div className="chart-card-body">
-            <ReactApexChart options={{...ct,chart:{type:'bar'},plotOptions:{bar:{horizontal:true,distributed:true,borderRadius:4,barHeight:'56%'}},colors:checklistByArea.map(r=>r.pct<70?'#eab308':r.pct<90?'#3b82f6':'#22c55e'),xaxis:{...ct.xaxis,max:100},legend:{show:false}}} series={[{name:'Checklists %',data:checklistByArea.map(r=>({x:`${r.area} (${r.role})`,y:+r.pct.toFixed(1)}))}]} type="bar" height={220}/>
-          </div></div>
-        </div>
+        <OperacaoUXModule opsWeeks={agendaWeeksForModule} filtered={filtered} kpis={kpis} byProf={byProf} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== EQUIPE ===== */}
       {activeTab === 6 && (<>

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import {
-  BarChart, Bar, LineChart, AreaChart, Area,
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ReferenceLine, PieChart, Pie, ScatterChart, Scatter, ZAxis, Cell,
+  ReferenceLine, PieChart, Pie, ScatterChart, Scatter, ZAxis, Cell, Legend,
 } from 'recharts';
 import type { Appointment, Filters } from '../../data/mockData';
 import type { KPISummary } from '../../data/dashboardTypes';
