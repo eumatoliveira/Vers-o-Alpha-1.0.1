@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { KPISummary } from '../../data/dashboardTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,13 +24,21 @@ interface Props {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY_FACTS = 'glx_ai_facts_v2';
-const STORAGE_KEY_CHAT  = 'glx_ai_chat_v2';
+const STORAGE_KEY_FACTS  = 'glx_ai_facts_v2';
+const STORAGE_KEY_CHAT   = 'glx_ai_chat_v2';
 const STORAGE_KEY_APIKEY = 'glx_anthropic_key';
 
-const PURPLE      = '#7C3AED';
-const PURPLE_MID  = '#8B5CF6';
-const PURPLE_LIGHT = '#EDE9FE';
+const PURPLE       = '#F97316';
+const PURPLE_MID   = '#111111';
+const PURPLE_LIGHT = '#FFF1E8';
+const BLACK_SOFT   = '#1A1A1A';
+
+const WELCOME_MSG: Message = {
+  id: '__welcome__',
+  role: 'assistant',
+  content: 'Olá! 👋 Sou o **Assistente GLX**, sua IA especializada em performance de clínicas.\n\nJá tenho acesso em tempo real aos seus dados do dashboard. Me pergunte sobre **faturamento**, **no-show**, **NPS**, **marketing** ou qualquer métrica — vou analisar e dar recomendações práticas.',
+  timestamp: new Date(),
+};
 
 // ─── System Prompt Builder ────────────────────────────────────────────────────
 
@@ -99,39 +108,41 @@ function buildSystemPrompt(kpis: KPISummary, fmt: (v: number) => string, facts: 
   return lines.join('\n');
 }
 
-// ─── Suggested Questions (based on worst KPIs) ───────────────────────────────
+// ─── Suggested Questions ─────────────────────────────────────────────────────
 
 function getSuggestions(kpis: KPISummary): string[] {
   const q: string[] = [];
-  if (kpis.noShowRate > 8)         q.push('Como reduzir o no-show da clínica?');
+  if (kpis.noShowRate > 8)         q.push('Como reduzir o no-show?');
   if (kpis.occupancyRate < 80)     q.push('Por que minha ocupação está baixa?');
-  if (kpis.margin < 20)            q.push('Como melhorar minha margem líquida?');
-  if (kpis.inadimplenciaRate > 4)  q.push('Estratégia para reduzir inadimplência?');
-  if (kpis.avgNPS < 8.5)           q.push('Como aumentar o NPS dos pacientes?');
+  if (kpis.margin < 20)            q.push('Como melhorar minha margem?');
+  if (kpis.inadimplenciaRate > 4)  q.push('Estratégia para inadimplência?');
+  if (kpis.avgNPS < 8.5)           q.push('Como aumentar o NPS?');
   if (kpis.slaLeadHours > 1)       q.push('Como melhorar o SLA de resposta?');
   q.push('Visão geral da clínica');
-  q.push('Quais são as principais prioridades hoje?');
-  return q.slice(0, 5);
+  q.push('Principais prioridades hoje');
+  return q.slice(0, 4);
 }
 
-// ─── Simple Markdown Renderer ─────────────────────────────────────────────────
+// ─── Markdown Renderer ───────────────────────────────────────────────────────
 
 function MD({ text }: { text: string }) {
   return (
     <div style={{ lineHeight: 1.7 }}>
       {text.split('\n').map((line, i) => {
         if (line.startsWith('═══') || line === '') {
-          return <div key={i} style={{ height: line === '' ? 6 : 'auto', fontSize: 10, color: '#a0a0a0', marginTop: 4 }}>{line}</div>;
+          return <div key={i} style={{ height: line === '' ? 4 : 'auto', fontSize: 10, color: '#a0a0a0', marginTop: 2 }}>{line}</div>;
         }
-        // Bold
         const parts = line.split(/\*\*([^*]+)\*\*/g);
         const rendered = parts.map((part, j) =>
-          j % 2 === 1 ? <strong key={j} style={{ color: 'inherit' }}>{part}</strong> : part
+          j % 2 === 1 ? <strong key={j}>{part}</strong> : part
         );
         return <div key={i}>{rendered}</div>;
       })}
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(widget, document.body);
 }
 
 // ─── TypingDots ───────────────────────────────────────────────────────────────
@@ -140,13 +151,10 @@ function TypingDots() {
   return (
     <div style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '4px 0' }}>
       {[0, 1, 2].map(i => (
-        <div
-          key={i}
-          style={{
-            width: 7, height: 7, borderRadius: '50%', background: PURPLE,
-            animation: `glxBounce 1.2s ${i * 0.2}s infinite ease-in-out`,
-          }}
-        />
+        <div key={i} style={{
+          width: 7, height: 7, borderRadius: '50%', background: PURPLE,
+          animation: `glxBounce 1.2s ${i * 0.2}s infinite ease-in-out`,
+        }} />
       ))}
       <style>{`
         @keyframes glxBounce {
@@ -158,51 +166,102 @@ function TypingDots() {
   );
 }
 
+// ─── GLX Logo Button ─────────────────────────────────────────────────────────
+
+function GLXIcon() {
+  return (
+    <svg width="56" height="56" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <defs>
+        <path id="glx-seal-top-mini" d="M 18,60 a 42,42 0 1,1 84,0" fill="none" />
+        <path id="glx-seal-bottom-mini" d="M 102,60 a 42,42 0 1,1 -84,0" fill="none" />
+      </defs>
+      <circle cx="60" cy="60" r="58" fill="#111111" />
+      <circle cx="60" cy="60" r="48" fill="none" stroke="#F97316" strokeWidth="3.2" />
+      <text
+        x="60"
+        y="73"
+        textAnchor="middle"
+        fontSize="34"
+        fontWeight="900"
+        fill="#ffffff"
+        fontFamily="Arial, sans-serif"
+        letterSpacing="-1.6"
+      >
+        GLX
+      </text>
+      <text
+        fill="#F97316"
+        fontSize="9"
+        fontWeight="900"
+        fontFamily="Arial, sans-serif"
+        letterSpacing="0.5"
+      >
+        <textPath href="#glx-seal-top-mini" startOffset="50%" textAnchor="middle">
+          GROWTH.LEAN.EXECUTION
+        </textPath>
+      </text>
+      <text
+        fill="#F97316"
+        fontSize="9"
+        fontWeight="900"
+        fontFamily="Arial, sans-serif"
+        letterSpacing="0.5"
+      >
+        <textPath href="#glx-seal-bottom-mini" startOffset="50%" textAnchor="middle">
+          GROWTH.LEAN.EXECUTION
+        </textPath>
+      </text>
+    </svg>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function AIAssistantModule({ kpis, fmt }: Props) {
-  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(STORAGE_KEY_APIKEY) ?? '');
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>(() => {
+  const [isOpen, setIsOpen]       = useState(false);
+  const [apiKey, setApiKey]       = useState<string>(() => localStorage.getItem(STORAGE_KEY_APIKEY) ?? '');
+  const [messages, setMessages]   = useState<Message[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY_CHAT) || '[]')
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_CHAT) || '[]')
         .map((m: Message & { timestamp: string }) => ({ ...m, timestamp: new Date(m.timestamp) }));
+      return saved.length > 0 ? saved : [WELCOME_MSG];
     } catch { return []; }
   });
-  const [input, setInput] = useState('');
+  const [input, setInput]           = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
-  const [facts, setFacts] = useState<CustomFact[]>(() => {
+  const [facts, setFacts]           = useState<CustomFact[]>(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY_FACTS) || '[]'); }
     catch { return []; }
   });
-  const [showRag, setShowRag] = useState(false);
+  const [showRag, setShowRag]   = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [newValue, setNewValue] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]       = useState<string | null>(null);
 
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const inputRef    = useRef<HTMLInputElement>(null);
-  const abortRef    = useRef<AbortController | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const abortRef  = useRef<AbortController | null>(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_CHAT, JSON.stringify(messages)); }, [messages]);
+  useEffect(() => {
+    if (isOpen) {
+      setApiKey(localStorage.getItem(STORAGE_KEY_APIKEY) ?? '');
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen, messages]);
+
+  useEffect(() => {
+    const nonWelcome = messages.filter(m => m.id !== '__welcome__');
+    if (nonWelcome.length > 0) {
+      localStorage.setItem(STORAGE_KEY_CHAT, JSON.stringify(messages));
+    }
+  }, [messages]);
+
   useEffect(() => { localStorage.setItem(STORAGE_KEY_FACTS, JSON.stringify(facts)); }, [facts]);
 
-  const saveApiKey = useCallback(() => {
-    if (!apiKeyInput.trim()) return;
-    localStorage.setItem(STORAGE_KEY_APIKEY, apiKeyInput.trim());
-    setApiKey(apiKeyInput.trim());
-    setApiKeyInput('');
-  }, [apiKeyInput]);
-
-  const clearKey = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY_APIKEY);
-    setApiKey('');
-  }, []);
-
   const send = useCallback(async (text: string) => {
-    if (!text.trim() || isStreaming || !apiKey) return;
+    if (!text.trim() || isStreaming) return;
     setError(null);
 
     const userMsg: Message = {
@@ -215,16 +274,41 @@ export function AIAssistantModule({ kpis, fmt }: Props) {
     setInput('');
     setIsStreaming(true);
 
-    // Placeholder streaming message
     const assistantId = crypto.randomUUID();
     setStreamingId(assistantId);
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: new Date() }]);
 
+    if (!apiKey) {
+      const normalized = text.trim().toLowerCase();
+      const localReply = [
+        'Resumo rapido da clinica:',
+        `? Faturamento bruto: **${fmt(kpis.grossRevenue)}**`,
+        `? Margem liquida: **${kpis.margin.toFixed(1)}%**`,
+        `? No-show: **${kpis.noShowRate.toFixed(1)}%**`,
+        `? NPS: **${kpis.avgNPS.toFixed(1)}**`,
+        '',
+        normalized.includes('no-show')
+          ? 'Prioridade: reduzir no-show com confirmacao ativa e reengajamento no dia anterior.'
+          : normalized.includes('margem') || normalized.includes('finance')
+            ? 'Prioridade: proteger margem revisando custos fixos, ticket medio e inadimplencia.'
+            : normalized.includes('nps') || normalized.includes('espera')
+              ? 'Prioridade: atacar experiencia, tempo de espera e SLA de resposta.'
+              : 'Posso te responder localmente com base nos KPIs visiveis do dashboard enquanto nenhuma API estiver configurada.',
+      ].join('\n');
+
+      window.setTimeout(() => {
+        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: localReply } : m));
+        setIsStreaming(false);
+        setStreamingId(null);
+      }, 350);
+      return;
+    }
+
     const abort = new AbortController();
     abortRef.current = abort;
 
-    // Build conversation history for the API (last 20 messages to keep context window manageable)
     const history = [...messages, userMsg]
+      .filter(m => m.id !== '__welcome__')
       .slice(-20)
       .map(m => ({ role: m.role, content: m.content }));
 
@@ -259,7 +343,6 @@ export function AIAssistantModule({ kpis, fmt }: Props) {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value, { stream: true });
         for (const line of chunk.split('\n')) {
           if (!line.startsWith('data: ')) continue;
@@ -273,7 +356,7 @@ export function AIAssistantModule({ kpis, fmt }: Props) {
                 prev.map(m => m.id === assistantId ? { ...m, content: accumulated } : m)
               );
             }
-          } catch { /* skip malformed SSE lines */ }
+          } catch { /* skip malformed SSE */ }
         }
       }
     } catch (err: unknown) {
@@ -296,357 +379,302 @@ export function AIAssistantModule({ kpis, fmt }: Props) {
   }, [newLabel, newValue]);
 
   const suggestions = getSuggestions(kpis);
-  const isEmpty = messages.length === 0;
 
-  // ── API Key Setup Screen ───────────────────────────────────────────────────
-  if (!apiKey) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 500 }}>
+  // ── Floating Button + Chat Window ─────────────────────────────────────────
+  const widget = (
+    <>
+      {/* CSS animations */}
+      <style>{`
+        @keyframes glxBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+          30% { transform: translateY(-7px); opacity: 1; }
+        }
+        @keyframes glxBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+        @keyframes glxSlideUp {
+          from { opacity: 0; transform: translateY(16px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes glxPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.5); }
+          50%       { box-shadow: 0 0 0 8px rgba(124,58,237,0); }
+        }
+      `}</style>
+
+      {/* ── Chat Window ──────────────────────────────────────────────────── */}
+      {isOpen && (
         <div style={{
-          background: 'var(--panel-bg, #fff)',
-          borderRadius: 20,
-          boxShadow: '0 8px 40px rgba(124,58,237,0.12)',
-          border: `1px solid ${PURPLE}22`,
-          padding: '40px 36px',
-          maxWidth: 440,
-          width: '100%',
-          textAlign: 'center',
-        }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: PURPLE_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 20px' }}>🤖</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>Assistente GLX</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 28 }}>
-            Insira sua chave da API Anthropic (Claude) para ativar o assistente de IA.<br />
-            A chave é salva localmente no seu navegador.
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <input
-              type="password"
-              value={apiKeyInput}
-              onChange={e => setApiKeyInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') saveApiKey(); }}
-              placeholder="sk-ant-api03-..."
-              autoFocus
-              style={{
-                flex: 1,
-                border: `1.5px solid ${PURPLE}44`,
-                borderRadius: 10,
-                padding: '12px 14px',
-                fontSize: 13,
-                outline: 'none',
-                background: 'var(--panel-bg, #fff)',
-                color: 'var(--text-primary)',
-                fontFamily: 'monospace',
-              }}
-            />
-            <button
-              onClick={saveApiKey}
-              disabled={!apiKeyInput.trim()}
-              style={{
-                background: apiKeyInput.trim() ? `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` : '#e5e7eb',
-                border: 'none',
-                borderRadius: 10,
-                color: '#fff',
-                padding: '0 18px',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: apiKeyInput.trim() ? 'pointer' : 'default',
-              }}
-            >
-              Ativar
-            </button>
-          </div>
-
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Obtenha sua chave em{' '}
-            <span style={{ color: PURPLE, fontWeight: 600 }}>console.anthropic.com</span>
-            {' '}→ API Keys
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main Chat UI ───────────────────────────────────────────────────────────
-  return (
-    <div style={{ display: 'flex', gap: 16, height: 700, maxHeight: '80vh' }}>
-
-      {/* ── Chat Panel ───────────────────────────────────────────────────── */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--panel-bg, #fff)',
-        borderRadius: 16,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-        border: '1px solid var(--border-card, #e5e7eb)',
-        overflow: 'hidden',
-        minWidth: 0,
-      }}>
-
-        {/* Header */}
-        <div style={{ background: `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🤖</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>Assistente GLX</div>
-            <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block', flexShrink: 0 }} />
-              Claude · {kpis.total.toLocaleString()} consultas analisadas
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => setShowRag(v => !v)}
-              title="Base de conhecimento treinável"
-              style={{ background: showRag ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: '#fff', padding: '5px 11px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-            >
-              📚 RAG
-            </button>
-            <button
-              onClick={() => { setMessages([]); localStorage.removeItem(STORAGE_KEY_CHAT); }}
-              title="Limpar conversa"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: '#fff', padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}
-            >
-              🗑
-            </button>
-            <button
-              onClick={clearKey}
-              title="Trocar chave API"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: '#fff', padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}
-            >
-              🔑
-            </button>
-          </div>
-        </div>
-
-        {/* Error banner */}
-        {error && (
-          <div style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca', padding: '10px 20px', fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <span>⚠️</span>
-            <span style={{ flex: 1 }}>{error}</span>
-            <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 14, fontWeight: 700 }}>×</button>
-          </div>
-        )}
-
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {isEmpty && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, paddingTop: 20 }}>
-              <div style={{ width: 68, height: 68, borderRadius: '50%', background: PURPLE_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>🤖</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Olá 👋</div>
-              <div style={{ fontSize: 13.5, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 340, lineHeight: 1.65 }}>
-                Como posso te ajudar hoje?<br />
-                Analiso seus dados em tempo real e gero insights com IA.
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 420, marginTop: 4 }}>
-                {suggestions.map(q => (
-                  <button
-                    key={q}
-                    onClick={() => send(q)}
-                    style={{ background: PURPLE_LIGHT, border: `1px solid ${PURPLE}33`, color: PURPLE, borderRadius: 20, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = `${PURPLE}22`; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = PURPLE_LIGHT; }}
-                  >
-                    ↗ {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {messages.map(msg => (
-            <div key={msg.id} style={{ display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 10 }}>
-              {msg.role === 'assistant' && (
-                <div style={{ width: 30, height: 30, borderRadius: '50%', background: PURPLE_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>🤖</div>
-              )}
-              <div style={{
-                maxWidth: '76%',
-                padding: '12px 16px',
-                borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                background: msg.role === 'user'
-                  ? `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`
-                  : 'var(--bg-secondary, #f8fafc)',
-                color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                fontSize: 13.5,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                border: msg.role === 'assistant' ? '1px solid var(--border-card, #e5e7eb)' : 'none',
-                wordBreak: 'break-word',
-                position: 'relative',
-              }}>
-                {msg.role === 'assistant'
-                  ? (msg.id === streamingId && msg.content === '')
-                    ? <TypingDots />
-                    : <MD text={msg.content} />
-                  : msg.content}
-                {msg.id === streamingId && msg.content !== '' && (
-                  <span style={{ display: 'inline-block', width: 2, height: '1em', background: PURPLE, marginLeft: 2, animation: 'glxBlink 1s infinite', verticalAlign: 'text-bottom' }}>
-                    <style>{`@keyframes glxBlink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Quick chips when conversation active */}
-        {!isEmpty && !isStreaming && (
-          <div style={{ padding: '8px 20px 0', display: 'flex', flexWrap: 'wrap', gap: 6, flexShrink: 0 }}>
-            {suggestions.slice(0, 3).map(q => (
-              <button
-                key={q}
-                onClick={() => send(q)}
-                style={{ background: PURPLE_LIGHT, border: `1px solid ${PURPLE}33`, color: PURPLE, borderRadius: 16, padding: '5px 11px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-              >
-                ↗ {q}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Input row */}
-        <div style={{ padding: '12px 20px 16px', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-          {isStreaming && (
-            <button
-              onClick={() => abortRef.current?.abort()}
-              style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626', padding: '8px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
-            >
-              ■ Parar
-            </button>
-          )}
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-            placeholder="Pergunte algo sobre sua clínica..."
-            disabled={isStreaming}
-            style={{
-              flex: 1,
-              border: `1.5px solid ${PURPLE}44`,
-              borderRadius: 24,
-              padding: '11px 18px',
-              fontSize: 13.5,
-              outline: 'none',
-              background: 'var(--panel-bg, #fff)',
-              color: 'var(--text-primary)',
-              transition: 'border-color 150ms',
-              opacity: isStreaming ? 0.6 : 1,
-            }}
-            onFocus={e => { e.currentTarget.style.borderColor = PURPLE; }}
-            onBlur={e => { e.currentTarget.style.borderColor = `${PURPLE}44`; }}
-          />
-          <button
-            onClick={() => send(input)}
-            disabled={!input.trim() || isStreaming}
-            style={{
-              width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-              background: input.trim() && !isStreaming ? `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` : '#e5e7eb',
-              border: 'none',
-              cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
-              color: '#fff', fontSize: 20,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 200ms',
-            }}
-          >
-            ↑
-          </button>
-        </div>
-
-        <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', paddingBottom: 10, flexShrink: 0 }}>
-          O Assistente GLX pode cometer erros. Confirme os dados no dashboard.
-        </div>
-      </div>
-
-      {/* ── RAG / Knowledge Panel ────────────────────────────────────────── */}
-      {showRag && (
-        <div style={{
-          width: 290,
-          flexShrink: 0,
-          background: 'var(--panel-bg, #fff)',
-          borderRadius: 16,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-          border: '1px solid var(--border-card, #e5e7eb)',
-          overflow: 'hidden',
+          position: 'fixed',
+          bottom: 90,
+          right: 24,
+          width: 380,
+          height: 560,
+          zIndex: 9999,
           display: 'flex',
           flexDirection: 'column',
+          borderRadius: 20,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.22), 0 4px 16px rgba(124,58,237,0.15)',
+          overflow: 'hidden',
+          background: 'var(--panel-bg, #fff)',
+          border: `1px solid ${PURPLE}22`,
+          animation: 'glxSlideUp 220ms ease',
         }}>
-          <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-card, #e5e7eb)', background: PURPLE_LIGHT }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: PURPLE, display: 'flex', alignItems: 'center', gap: 6 }}>📚 Base de Conhecimento</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.4 }}>
-              Contexto enviado ao Claude em cada mensagem
+
+          {/* Header */}
+          <div style={{
+            background: BLACK_SOFT,
+            borderTop: `6px solid ${PURPLE}`,
+            padding: '14px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexShrink: 0,
+          }}>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800, letterSpacing: -0.4, flexShrink: 0 }}>GLX</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>Assistente GLX</div>
+              <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10.5, display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
+                Claude · {kpis.total.toLocaleString()} consultas analisadas
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => setShowRag(v => !v)} title="Base de conhecimento"
+                style={{ background: showRag ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 7, color: '#fff', padding: '4px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                ????
+              </button>
+              <button onClick={() => { setMessages([]); localStorage.removeItem(STORAGE_KEY_CHAT); }} title="Limpar"
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 7, color: '#fff', padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>
+                ????
+              </button>
+              <button onClick={() => setIsOpen(false)} title="Fechar"
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 7, color: '#fff', padding: '4px 8px', fontSize: 14, cursor: 'pointer', lineHeight: 1 }}>
+                ??????
+              </button>
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Dados Auto (dashboard)</div>
-            {[
-              { label: 'Consultas',   value: kpis.realized.toString() },
-              { label: 'Faturamento', value: fmt(kpis.grossRevenue) },
-              { label: 'Ticket Médio',value: fmt(kpis.avgTicket) },
-              { label: 'NPS',         value: kpis.avgNPS.toFixed(1) },
-              { label: 'Leads',       value: kpis.leads.toString() },
-              { label: 'Margem',      value: `${kpis.margin.toFixed(1)}%` },
-            ].map(f => (
-              <div key={f.label} style={{ background: '#f8fafc', borderRadius: 7, padding: '6px 10px', fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8, border: '1px solid #e5e7eb' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{f.label}</span>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{f.value}</span>
-              </div>
-            ))}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 10, marginBottom: 4 }}>Contexto Treinável</div>
-            {facts.length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '8px 0' }}>
-                Nenhum contexto adicionado ainda.
-              </div>
-            )}
-            {facts.map(f => (
-              <div key={f.id} style={{ background: PURPLE_LIGHT, borderRadius: 8, padding: '8px 10px', fontSize: 12, display: 'flex', alignItems: 'flex-start', gap: 6, border: `1px solid ${PURPLE}22` }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, color: PURPLE, marginBottom: 2 }}>{f.label}</div>
-                  <div style={{ color: 'var(--text-secondary)' }}>{f.value}</div>
+              {/* Messages area */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+                {/* Error banner */}
+                {error && (
+                  <div style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca', padding: '8px 14px', fontSize: 11.5, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <span>⚠️</span>
+                    <span style={{ flex: 1 }}>{error}</span>
+                    <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 14, fontWeight: 700 }}>×</button>
+                  </div>
+                )}
+
+                {/* Messages */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {messages.length === 0 && (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: '50%', background: PURPLE_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', color: PURPLE_MID, fontSize: 16, fontWeight: 800, letterSpacing: -0.5 }}>GLX</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Olá 👋</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.55, maxWidth: 260 }}>
+                        Como posso te ajudar hoje?<br />Tenho seus dados em tempo real.
+                      </div>
+                    </div>
+                  )}
+
+                  {messages.map(msg => (
+                    <div key={msg.id} style={{ display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8 }}>
+                      {msg.role === 'assistant' && (
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: PURPLE_LIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', color: PURPLE_MID, fontSize: 9, fontWeight: 800, letterSpacing: -0.3, flexShrink: 0 }}>GLX</div>
+                      )}
+                      <div style={{
+                        maxWidth: '80%',
+                        padding: '10px 13px',
+                        borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        background: msg.role === 'user'
+                          ? `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})`
+                          : 'var(--bg-secondary, #f8fafc)',
+                        color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                        fontSize: 12.5,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                        border: msg.role === 'assistant' ? '1px solid var(--border-card, #e5e7eb)' : 'none',
+                        wordBreak: 'break-word',
+                      }}>
+                        {msg.role === 'assistant'
+                          ? (msg.id === streamingId && msg.content === '')
+                            ? <TypingDots />
+                            : <MD text={msg.content} />
+                          : msg.content}
+                        {msg.id === streamingId && msg.content !== '' && (
+                          <span style={{ display: 'inline-block', width: 2, height: '1em', background: PURPLE, marginLeft: 2, animation: 'glxBlink 1s infinite', verticalAlign: 'text-bottom' }} />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={bottomRef} />
                 </div>
-                <button
-                  onClick={() => setFacts(prev => prev.filter(x => x.id !== f.id))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 15, padding: 0, lineHeight: 1, flexShrink: 0 }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
 
-          {/* Add fact */}
-          <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border-card, #e5e7eb)', display: 'flex', flexDirection: 'column', gap: 7 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6 }}>+ Adicionar contexto</div>
-            <input
-              value={newLabel}
-              onChange={e => setNewLabel(e.target.value)}
-              placeholder="Categoria (ex.: Especialidade)"
-              style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '7px 10px', fontSize: 12, background: 'var(--panel-bg, #fff)', color: 'var(--text-primary)', outline: 'none' }}
-            />
-            <input
-              value={newValue}
-              onChange={e => setNewValue(e.target.value)}
-              placeholder="Valor (ex.: Dermatologia)"
-              onKeyDown={e => { if (e.key === 'Enter') addFact(); }}
-              style={{ border: '1px solid #d1d5db', borderRadius: 7, padding: '7px 10px', fontSize: 12, background: 'var(--panel-bg, #fff)', color: 'var(--text-primary)', outline: 'none' }}
-            />
-            <button
-              onClick={addFact}
-              disabled={!newLabel.trim() || !newValue.trim()}
-              style={{
-                background: newLabel.trim() && newValue.trim() ? PURPLE : '#e5e7eb',
-                border: 'none', borderRadius: 8, color: '#fff',
-                padding: '8px', fontSize: 12, fontWeight: 700,
-                cursor: newLabel.trim() && newValue.trim() ? 'pointer' : 'default',
-              }}
-            >
-              Adicionar ao RAG
-            </button>
-          </div>
+                {/* Suggestion chips */}
+                {messages.length <= 1 && !isStreaming && (
+                  <div style={{ padding: '4px 12px 6px', display: 'flex', flexWrap: 'wrap', gap: 5, flexShrink: 0 }}>
+                    {suggestions.map(q => (
+                      <button key={q} onClick={() => send(q)}
+                        style={{ background: PURPLE_LIGHT, border: `1px solid ${PURPLE}33`, color: PURPLE, borderRadius: 14, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                        ↗ {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input */}
+                <div style={{ padding: '8px 12px 12px', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, borderTop: '1px solid var(--border-card, #e5e7eb)' }}>
+                  {isStreaming && (
+                    <button onClick={() => abortRef.current?.abort()}
+                      style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626', padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                      ■
+                    </button>
+                  )}
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+                    placeholder="Pergunte algo..."
+                    disabled={isStreaming}
+                    style={{
+                      flex: 1, border: `1.5px solid ${PURPLE}44`, borderRadius: 20, padding: '9px 14px',
+                      fontSize: 12.5, outline: 'none',
+                      background: 'var(--panel-bg, #fff)', color: 'var(--text-primary)',
+                      opacity: isStreaming ? 0.6 : 1,
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = PURPLE; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = `${PURPLE}44`; }}
+                  />
+                  <button
+                    onClick={() => send(input)}
+                    disabled={!input.trim() || isStreaming}
+                    style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      background: input.trim() && !isStreaming ? `linear-gradient(135deg, ${PURPLE}, ${PURPLE_MID})` : '#e5e7eb',
+                      border: 'none', cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
+                      color: '#fff', fontSize: 16,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    ↑
+                  </button>
+                </div>
+
+                <div style={{ textAlign: 'center', fontSize: 9.5, color: 'var(--text-muted)', paddingBottom: 8, flexShrink: 0 }}>
+                  O Assistente GLX pode cometer erros. Confirme no dashboard.
+                </div>
+              </div>
+
+              {/* ── RAG Slide-in ──────────────────────────────────────────── */}
+              {showRag && (
+                <div style={{
+                  width: 210, flexShrink: 0,
+                  borderLeft: '1px solid var(--border-card, #e5e7eb)',
+                  background: 'var(--panel-bg, #fff)',
+                  display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-card, #e5e7eb)', background: PURPLE_LIGHT }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: PURPLE }}>📚 Base de Conhecimento</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Contexto enviado ao Claude</div>
+                  </div>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.7, color: 'var(--text-muted)', marginBottom: 2 }}>Auto (dashboard)</div>
+                    {[
+                      { label: 'Consultas',    value: kpis.realized.toString() },
+                      { label: 'Faturamento',  value: fmt(kpis.grossRevenue) },
+                      { label: 'Ticket Médio', value: fmt(kpis.avgTicket) },
+                      { label: 'NPS',          value: kpis.avgNPS.toFixed(1) },
+                      { label: 'Margem',       value: `${kpis.margin.toFixed(1)}%` },
+                    ].map(f => (
+                      <div key={f.label} style={{ background: '#f8fafc', borderRadius: 6, padding: '5px 8px', fontSize: 11, display: 'flex', justifyContent: 'space-between', gap: 4, border: '1px solid #e5e7eb' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>{f.label}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 10.5 }}>{f.value}</span>
+                      </div>
+                    ))}
+
+                    <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.7, color: 'var(--text-muted)', marginTop: 8, marginBottom: 2 }}>Treinável</div>
+                    {facts.length === 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '6px 0' }}>Nenhum contexto ainda.</div>
+                    )}
+                    {facts.map(f => (
+                      <div key={f.id} style={{ background: PURPLE_LIGHT, borderRadius: 6, padding: '6px 8px', fontSize: 11, display: 'flex', alignItems: 'flex-start', gap: 4, border: `1px solid ${PURPLE}22` }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: PURPLE, fontSize: 10.5 }}>{f.label}</div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: 10.5 }}>{f.value}</div>
+                        </div>
+                        <button onClick={() => setFacts(prev => prev.filter(x => x.id !== f.id))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ padding: '8px 10px', borderTop: '1px solid var(--border-card, #e5e7eb)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                      placeholder="Categoria"
+                      style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 8px', fontSize: 11, background: 'var(--panel-bg, #fff)', color: 'var(--text-primary)', outline: 'none' }} />
+                    <input value={newValue} onChange={e => setNewValue(e.target.value)}
+                      placeholder="Valor"
+                      onKeyDown={e => { if (e.key === 'Enter') addFact(); }}
+                      style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 8px', fontSize: 11, background: 'var(--panel-bg, #fff)', color: 'var(--text-primary)', outline: 'none' }} />
+                    <button onClick={addFact} disabled={!newLabel.trim() || !newValue.trim()}
+                      style={{
+                        background: newLabel.trim() && newValue.trim() ? PURPLE : '#e5e7eb',
+                        border: 'none', borderRadius: 6, color: '#fff', padding: '7px', fontSize: 11, fontWeight: 700,
+                        cursor: newLabel.trim() && newValue.trim() ? 'pointer' : 'default',
+                      }}>
+                      + Adicionar ao RAG
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
         </div>
       )}
-    </div>
+
+      {/* ── Floating Button ──────────────────────────────────────────────────── */}
+      <button
+        onClick={() => setIsOpen(v => !v)}
+        title="Assistente GLX IA"
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: BLACK_SOFT,
+          border: `3px solid ${PURPLE}`,
+          boxShadow: isOpen
+            ? `0 4px 20px rgba(249,115,22,0.35)`
+            : `0 4px 20px rgba(17,17,17,0.28)`,
+          cursor: 'pointer',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'transform 200ms ease, box-shadow 200ms ease',
+          animation: !apiKey && !isOpen ? 'glxPulse 2.5s infinite' : undefined,
+          transform: isOpen ? 'scale(0.95)' : 'scale(1)',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = isOpen ? 'scale(0.95)' : 'scale(1)'; }}
+      >
+        {isOpen ? (
+          <span style={{ color: '#fff', fontSize: 20, lineHeight: 1 }}>╲╱</span>
+        ) : (
+          <GLXIcon />
+        )}
+        {/* Unread dot when closed and has messages */}
+        {!isOpen && messages.filter(m => m.id !== '__welcome__').length > 0 && (
+          <span style={{
+            position: 'absolute', top: 3, right: 3,
+            width: 12, height: 12, borderRadius: '50%',
+            background: '#4ade80', border: '2px solid #fff',
+          }} />
+        )}
+      </button>
+    </>
   );
 }

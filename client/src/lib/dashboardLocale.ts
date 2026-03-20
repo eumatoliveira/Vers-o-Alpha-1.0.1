@@ -46,6 +46,7 @@ type AdminLayoutCopy = {
     dashboard: string;
     pipeline: string;
     operations: string;
+    aiAssistant: string;
     integrations: string;
     finance: string;
     users: string;
@@ -462,6 +463,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
       dashboard: "Dashboard",
       pipeline: "Pipeline & Funil",
       operations: "Operacao Interna",
+      aiAssistant: "Assistente IA",
       integrations: "Integracoes",
       finance: "Financeiro",
       users: "Usuarios",
@@ -649,6 +651,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
       dashboard: "Dashboard",
       pipeline: "Pipeline & Funnel",
       operations: "Internal Operations",
+      aiAssistant: "AI Assistant",
       integrations: "Integrations",
       finance: "Financial",
       users: "Users",
@@ -836,6 +839,7 @@ const ADMIN_COPY: Record<Language, AdminLayoutCopy> = {
       dashboard: "Dashboard",
       pipeline: "Pipeline y Funnel",
       operations: "Operacion Interna",
+      aiAssistant: "Asistente IA",
       integrations: "Integraciones",
       finance: "Finanzas",
       users: "Usuarios",

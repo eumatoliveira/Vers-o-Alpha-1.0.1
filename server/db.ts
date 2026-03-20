@@ -28,6 +28,15 @@ import type { SupportedCurrency } from "@shared/currency";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+// Named synchronous export used by routers (aiChatRouter, costTracker, etc).
+// Operations throw at runtime when DATABASE_URL is not configured.
+export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_target: never, prop: string | symbol) {
+    if (_db) return (_db as any)[prop];
+    throw new Error(`[Database] No connection available. Configure DATABASE_URL to enable database features. (db.${String(prop)})`);
+  },
+});
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {

@@ -13,6 +13,7 @@ import { registerAsaasWebhookRouter } from "../infrastructure/webhooks/asaasRout
 import { currencyService } from "../domain/currencyService";
 import { exportRouter } from "../exportRouter";
 import { v1Router } from "../publicApi/v1Router";
+import { bootstrapDone } from "../authRouter";
 
 // ═══════════════════════════════════════════════════════════════
 // Port Discovery
@@ -250,6 +251,10 @@ export async function startServer() {
   if (port !== preferredPort) {
     console.log(`[Server] Port ${preferredPort} is busy, using port ${port} instead`);
   }
+
+  // Wait for user bootstrap to complete before accepting connections
+  // so login requests never race against bcrypt hashing of demo users
+  await bootstrapDone;
 
   server.listen(port, () => {
     console.log(`[Server] Running on http://localhost:${port}/`);

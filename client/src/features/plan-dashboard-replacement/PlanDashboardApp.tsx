@@ -10,6 +10,7 @@ import { trpc } from '@/lib/trpc';
 import EssentialDashboard from './components/EssentialDashboard';
 import ProDashboard from './components/ProDashboard';
 import EnterpriseDashboard from './components/EnterpriseDashboard';
+import { SupportChatWidget } from './components/modules/SupportChatWidget';
 import { Filters, controlTowerFactsToAppointments, defaultFilters } from './data/mockData';
 import { buildDashboardCsv, extractDashboardSections } from './utils/csvExport';
 import { exportDashboardHealthPDF, exportDashboardPDF } from './utils/pdfExport';
@@ -146,7 +147,7 @@ function resolveExportRole(user: unknown): string {
 
 const sidebarMenus: Record<Plan, { items: string[] }> = {
   ESSENTIAL: { items: ['Visão CEO', 'Agenda & No-Show', 'Financeiro Executivo', 'Marketing & Captação', 'Operação & UX', 'Integrações'] },
-  PRO: { items: ['Visão CEO', 'Financeiro Avançado', 'Agenda/No-Show', 'Marketing', 'Integrações', 'Operação & Experiência', 'Equipe', 'Assistente IA'] },
+  PRO: { items: ['Visão CEO', 'Financeiro Avançado', 'Agenda/No-Show', 'Marketing', 'Integrações', 'Operação & Experiência', 'Equipe'] },
   ENTERPRISE: { items: ['Visão CEO', 'Financeiro — Investidor', 'Agenda/No-Show', 'Marketing', 'Multi-Unidade', 'Integrações', 'Operação & Experiência', 'Equipe', 'Governança'] },
 };
 
@@ -1369,6 +1370,14 @@ function PlanDashboardApp() {
             ))}
           </div>
         ) : null}
+
+        <SupportChatWidget
+          theme={deferredTheme}
+          appointments={resolvedAppointments}
+          filters={filters}
+          activePlan={activePlan}
+          kpiSourceMode={kpiSourceMode}
+        />
       </div>
     </div>
   );

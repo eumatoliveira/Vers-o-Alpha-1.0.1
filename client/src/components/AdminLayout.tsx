@@ -18,6 +18,7 @@ import {
   Circle,
   ChevronRight,
   SlidersHorizontal,
+  Bot,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "./ui/button";
@@ -61,6 +62,7 @@ interface AdminLayoutProps {
 type NavKey =
   | "pipeline"
   | "operations"
+  | "aiAssistant"
   | "errors"
   | "clientConfig"
   | "integrations"
@@ -81,6 +83,7 @@ type NavItem = {
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   { key: "pipeline", href: "/admin?view=pipeline", icon: GitBranch },
   { key: "operations", href: "/admin?view=operacao", icon: BriefcaseBusiness },
+  { key: "aiAssistant", href: "/admin/assistente-ia", icon: Bot },
   { key: "clientConfig", href: "/admin/client-config", icon: SlidersHorizontal },
   { key: "errors", href: "/admin/erros", icon: AlertTriangle },
 ];

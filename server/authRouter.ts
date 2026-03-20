@@ -161,9 +161,11 @@ async function ensureTestClientUsers() {
   }
 }
 
-// Call initialization
-initializeAdminUser().catch(console.error);
-ensureTestClientUsers().catch(console.error);
+// Call initialization — exported so startServer() can await before listening
+export const bootstrapDone: Promise<void> = (async () => {
+  await initializeAdminUser().catch(console.error);
+  await ensureTestClientUsers().catch(console.error);
+})();
 
 export const authRouter = router({
   // Login with email/password

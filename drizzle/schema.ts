@@ -734,6 +734,135 @@ export const apiKeys = mysqlTable("api_keys", {
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = typeof apiKeys.$inferInsert;
 
+// ═══════════════════════════════════════════════════════════════
+//  MULTI-TENANT AI CHAT — GLX Insights
+//  Cada registro é estritamente escopado por userId.
+//  Nunca consultar sem WHERE userId = ctx.user.id
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Projetos de IA por usuário (RAG / contexto persistente)
+ */
+export const aiProjects = mysqlTable("ai_projects", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Dono do projeto — never queryable without this */
+  userId: int("userId").references(() => users.id).notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description"),
+  /** Prompt de sistema específico do projeto (opcional) */
+  systemPrompt: text("systemPrompt"),
+  archived: boolean("archived").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiProject = typeof aiProjects.$inferSelect;
+export type InsertAiProject = typeof aiProjects.$inferInsert;
+
+/**
+ * Conversas de IA — cada conversa pertence a um único usuário
+ */
+export const aiConversations = mysqlTable("ai_conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  /** Null = conversa livre; preenchido = conversa dentro de um projeto */
+  projectId: int("projectId").references(() => aiProjects.id),
+  title: varchar("title", { length: 160 }).notNull().default("Nova conversa"),
+  status: mysqlEnum("status", ["active", "archived"]).default("active").notNull(),
+  /** Acumulado de tokens enviados nesta conversa */
+  tokensSent: int("tokensSent").default(0).notNull(),
+  /** Acumulado de tokens recebidos nesta conversa */
+  tokensReceived: int("tokensReceived").default(0).notNull(),
+  /** Custo estimado acumulado em USD */
+  estimatedCostUsd: decimal("estimatedCostUsd", { precision: 10, scale: 6 }).default("0").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiConversation = typeof aiConversations.$inferSelect;
+export type InsertAiConversation = typeof aiConversations.$inferInsert;
+
+/**
+ * Mensagens — vinculadas sempre ao userId para garantir isolamento mesmo em queries diretas
+ */
+export const aiMessages = mysqlTable("ai_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").references(() => aiConversations.id).notNull(),
+  /** Denormalizado para permitir row-level security sem JOIN */
+  userId: int("userId").references(() => users.id).notNull(),
+  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  content: text("content").notNull(),
+  /** Tokens reais contados após a chamada ao modelo */
+  tokensIn: int("tokensIn").default(0).notNull(),
+  tokensOut: int("tokensOut").default(0).notNull(),
+  /** Modelo usado nesta mensagem */
+  modelUsed: varchar("modelUsed", { length: 60 }),
+  /** Classificação da tarefa para o router de modelo */
+  requestType: mysqlEnum("requestType", ["simple", "standard", "complex", "summary"]),
+  estimatedCostUsd: decimal("estimatedCostUsd", { precision: 10, scale: 6 }).default("0").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type InsertAiMessage = typeof aiMessages.$inferInsert;
+
+/**
+ * Resumos automáticos de contexto — substitui histórico antigo para reduzir tokens
+ */
+export const aiContextSummaries = mysqlTable("ai_context_summaries", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").references(() => aiConversations.id).notNull(),
+  userId: int("userId").references(() => users.id).notNull(),
+  summaryText: text("summaryText").notNull(),
+  /** ID da última mensagem coberta por este resumo */
+  upToMessageId: int("upToMessageId").references(() => aiMessages.id).notNull(),
+  tokensUsed: int("tokensUsed").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AiContextSummary = typeof aiContextSummaries.$inferSelect;
+export type InsertAiContextSummary = typeof aiContextSummaries.$inferInsert;
+
+/**
+ * Log de uso por requisição — billing e observabilidade por usuário
+ */
+export const aiUsageLogs = mysqlTable("ai_usage_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull(),
+  conversationId: int("conversationId").references(() => aiConversations.id),
+  projectId: int("projectId").references(() => aiProjects.id),
+  tokensIn: int("tokensIn").notNull(),
+  tokensOut: int("tokensOut").notNull(),
+  totalTokens: int("totalTokens").notNull(),
+  estimatedCostUsd: decimal("estimatedCostUsd", { precision: 10, scale: 6 }).notNull(),
+  modelUsed: varchar("modelUsed", { length: 60 }).notNull(),
+  requestType: mysqlEnum("requestType", ["simple", "standard", "complex", "summary"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
+export type InsertAiUsageLog = typeof aiUsageLogs.$inferInsert;
+
+/**
+ * Limites e orçamento de IA por usuário
+ */
+export const aiUserLimits = mysqlTable("ai_user_limits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id).notNull().unique(),
+  /** Orçamento diário em USD (null = sem limite) */
+  dailyBudgetUsd: decimal("dailyBudgetUsd", { precision: 8, scale: 4 }),
+  /** Orçamento mensal em USD (null = sem limite) */
+  monthlyBudgetUsd: decimal("monthlyBudgetUsd", { precision: 8, scale: 4 }),
+  /** Percentual de uso que dispara alerta (ex: 80 = 80%) */
+  alertAtPercent: int("alertAtPercent").default(80).notNull(),
+  isBlocked: boolean("isBlocked").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiUserLimit = typeof aiUserLimits.$inferSelect;
+export type InsertAiUserLimit = typeof aiUserLimits.$inferInsert;
+
 /**
  * API usage log for rate limiting and analytics
  */

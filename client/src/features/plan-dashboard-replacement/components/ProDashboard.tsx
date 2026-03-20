@@ -898,7 +898,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
                 Os dados adicionados aqui entram na tabela e nos gráficos desta aba.
               </span>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {editingManualTeamMemberIndex !== null && (
+                {(editingManualTeamMemberIndex !== null || editingBaseTeamMemberName !== null) && (
                   <button
                     type="button"
                     onClick={handleCancelTeamMemberEdit}
@@ -928,7 +928,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
                     cursor: 'pointer',
                   }}
                 >
-                  {editingManualTeamMemberIndex === null ? 'Adicionar membro' : 'Salvar alteraÃ§Ãµes'}
+                  {(editingManualTeamMemberIndex !== null || editingBaseTeamMemberName !== null) ? 'Salvar alterações' : 'Adicionar membro'}
                 </button>
               </div>
             </div>
@@ -947,10 +947,8 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
         </div>
       </>)}
 
-      {/* ===== ASSISTENTE IA ===== */}
-      {activeTab === 7 && (
-        <AIAssistantModule kpis={kpis} fmt={fmt} />
-      )}
+      {/* ===== FLOATING AI ASSISTANT ===== */}
+      <AIAssistantModule kpis={kpis} fmt={fmt} />
     </div>
   );
 }

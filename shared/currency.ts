@@ -3,6 +3,7 @@ export const BASE_CURRENCY = "BRL" as const;
 export const SUPPORTED_CURRENCIES = [
   "BRL",
   "USD",
+  "EUR",
   "ARS",
   "CLP",
   "COP",
@@ -18,6 +19,7 @@ export const SUPPORTED_CURRENCY_SET = new Set<SupportedCurrency>(SUPPORTED_CURRE
 export const CURRENCY_LOCALE_MAP: Record<SupportedCurrency, string> = {
   BRL: "pt-BR",
   USD: "en-US",
+  EUR: "de-DE",
   ARS: "es-AR",
   CLP: "es-CL",
   COP: "es-CO",

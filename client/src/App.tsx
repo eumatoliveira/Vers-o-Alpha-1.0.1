@@ -34,6 +34,7 @@ const AdminDreSheets = lazy(() => import("./pages/admin/AdminDreSheets"));
 const AdminErros = lazy(() => import("./pages/admin/AdminErros"));
 const AdminFeatureFlags = lazy(() => import("./pages/admin/AdminFeatureFlags"));
 const AdminClientConfig = lazy(() => import("./pages/admin/AdminClientConfig"));
+const AdminAiAssistant = lazy(() => import("./pages/admin/AdminAiAssistant"));
 
 const CEOScorecard = lazy(() => import("./pages/client/CEOScorecard"));
 const OperationalWaste = lazy(() => import("./pages/client/OperationalWaste"));
@@ -120,6 +121,7 @@ function Router() {
           <Route path="/admin/erros"><AdminRoute><AdminErros /></AdminRoute></Route>
           <Route path="/admin/flags"><AdminRoute><AdminFeatureFlags /></AdminRoute></Route>
           <Route path="/admin/client-config"><AdminRoute><AdminClientConfig /></AdminRoute></Route>
+          <Route path="/admin/assistente-ia"><AdminRoute><AdminAiAssistant /></AdminRoute></Route>
 
           <Route path="/performance"><Redirect to="/ceo" /></Route>
           <Route path="/performance/financials"><Redirect to="/financeiro" /></Route>
