@@ -513,6 +513,18 @@ export function SupportChatWidget({ theme: _theme, appointments, filters, active
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef<{ x: number; y: number; w: number; h: number; dir: string } | null>(null);
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile]);
+
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [webSearchOn, setWebSearchOn] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -849,7 +861,13 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
   const widget = (
     <div
       onClick={() => plusMenuOpen && setPlusMenuOpen(false)}
-      style={{
+      style={isMobile && isOpen ? {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10000,
+        display: 'flex',
+        flexDirection: 'column',
+      } : {
         position: 'fixed',
         right: 18,
         bottom: 42,
@@ -862,7 +880,18 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
     >
       {isOpen ? (
         <div
-          style={{
+          style={isMobile ? {
+            width: '100%',
+            height: '100%',
+            borderRadius: 0,
+            overflow: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            background: DARK.main,
+            boxShadow: 'none',
+            border: 'none',
+            flexDirection: 'column',
+          } : {
             width: chatWidth,
             height: chatHeight,
             borderRadius: 20,
@@ -876,59 +905,34 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
             userSelect: isResizing ? 'none' : 'auto',
           }}
         >
-          {/* ── RESIZE HANDLES ── */}
-          {/* Top edge */}
-          <div
-            onMouseDown={(e) => startResize(e, 'top')}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 14,
-              right: 14,
-              height: 6,
-              cursor: 'ns-resize',
-              zIndex: 20,
-            }}
-          />
-          {/* Left edge */}
-          <div
-            onMouseDown={(e) => startResize(e, 'left')}
-            style={{
-              position: 'absolute',
-              top: 14,
-              left: 0,
-              bottom: 14,
-              width: 6,
-              cursor: 'ew-resize',
-              zIndex: 20,
-            }}
-          />
-          {/* Top-left corner */}
-          <div
-            onMouseDown={(e) => startResize(e, 'corner')}
-            title="Arrastar para redimensionar"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: 18,
-              height: 18,
-              cursor: 'nw-resize',
-              zIndex: 21,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-              <circle cx="1.5" cy="1.5" r="1.2" fill="#4b5563" />
-              <circle cx="4.5" cy="1.5" r="1.2" fill="#4b5563" />
-              <circle cx="1.5" cy="4.5" r="1.2" fill="#4b5563" />
-              <circle cx="4.5" cy="4.5" r="1.2" fill="#4b5563" />
-              <circle cx="7.5" cy="1.5" r="1.2" fill="#4b5563" />
-              <circle cx="1.5" cy="7.5" r="1.2" fill="#4b5563" />
-            </svg>
-          </div>
+          {/* ── RESIZE HANDLES (desktop only) ── */}
+          {!isMobile && (<>
+            {/* Top edge */}
+            <div
+              onMouseDown={(e) => startResize(e, 'top')}
+              style={{ position: 'absolute', top: 0, left: 14, right: 14, height: 6, cursor: 'ns-resize', zIndex: 20 }}
+            />
+            {/* Left edge */}
+            <div
+              onMouseDown={(e) => startResize(e, 'left')}
+              style={{ position: 'absolute', top: 14, left: 0, bottom: 14, width: 6, cursor: 'ew-resize', zIndex: 20 }}
+            />
+            {/* Top-left corner */}
+            <div
+              onMouseDown={(e) => startResize(e, 'corner')}
+              title="Arrastar para redimensionar"
+              style={{ position: 'absolute', top: 0, left: 0, width: 18, height: 18, cursor: 'nw-resize', zIndex: 21, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                <circle cx="1.5" cy="1.5" r="1.2" fill="#4b5563" />
+                <circle cx="4.5" cy="1.5" r="1.2" fill="#4b5563" />
+                <circle cx="1.5" cy="4.5" r="1.2" fill="#4b5563" />
+                <circle cx="4.5" cy="4.5" r="1.2" fill="#4b5563" />
+                <circle cx="7.5" cy="1.5" r="1.2" fill="#4b5563" />
+                <circle cx="1.5" cy="7.5" r="1.2" fill="#4b5563" />
+              </svg>
+            </div>
+          </>)}
           {/* ── SIDEBAR ── */}
           {sidebarOpen ? (
             <div
@@ -1108,42 +1112,57 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '12px 14px',
+                padding: isMobile ? '14px 16px' : '12px 14px',
                 borderBottom: `1px solid ${DARK.border}`,
                 flexShrink: 0,
+                minHeight: isMobile ? 56 : 'auto',
+                background: isMobile ? DARK.sidebar : 'transparent',
               }}
             >
-              <button
-                type="button"
-                onClick={() => setSidebarOpen((v) => !v)}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  border: `1px solid ${DARK.border}`,
-                  background: DARK.surface,
-                  color: DARK.text,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {!isMobile && (
+                  <button
+                    type="button"
+                    onClick={() => setSidebarOpen((v) => !v)}
+                    style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      border: `1px solid ${DARK.border}`, background: DARK.surface,
+                      color: DARK.text, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <line x1="3" y1="6" x2="21" y2="6" />
+                      <line x1="3" y1="12" x2="21" y2="12" />
+                      <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                  </button>
+                )}
+                {isMobile && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', overflow: 'hidden',
+                      border: `2px solid ${DARK.border}`, flexShrink: 0,
+                    }}>
+                      <img src="/images/logo-badge.jpg" alt="Alex" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: DARK.text, lineHeight: 1.2 }}>Alex</div>
+                      <div style={{ fontSize: 11, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                        Online
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 style={{
-                  width: 34,
-                  height: 34,
+                  width: isMobile ? 44 : 34,
+                  height: isMobile ? 44 : 34,
                   borderRadius: '50%',
                   border: `1px solid ${DARK.border}`,
                   background: DARK.surface,
@@ -1152,7 +1171,7 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 16,
+                  fontSize: isMobile ? 18 : 16,
                   flexShrink: 0,
                 }}
               >
@@ -1299,7 +1318,7 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                 )}
 
                 {/* Input bar */}
-                <div style={{ padding: '10px 14px 14px', flexShrink: 0, position: 'relative' }}>
+                <div style={{ padding: isMobile ? '10px 14px calc(10px + env(safe-area-inset-bottom, 0px))' : '10px 14px 14px', flexShrink: 0, position: 'relative' }}>
                   {/* Plus menu */}
                   {plusMenuOpen && (
                     <div
@@ -1704,34 +1723,32 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
         </div>
       ) : null}
 
-      {/* Toggle button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        style={{
-          width: 68,
-          height: 68,
-          borderRadius: '50%',
-          border: `2px solid ${DARK.border}`,
-          background: DARK.sidebar,
-          overflow: 'hidden',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-          cursor: 'pointer',
-          padding: 0,
-        }}
-        aria-label="Abrir suporte"
-        title="Abrir suporte"
-      >
-        <img
-          src="/images/logo-badge.jpg"
-          alt="GLX"
+      {/* Toggle button — hidden on mobile when chat is open */}
+      {!(isMobile && isOpen) && (
+        <button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
           style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
+            width: 68,
+            height: 68,
+            borderRadius: '50%',
+            border: `2px solid ${DARK.border}`,
+            background: DARK.sidebar,
+            overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+            cursor: 'pointer',
+            padding: 0,
           }}
-        />
-      </button>
+          aria-label="Abrir suporte"
+          title="Abrir suporte"
+        >
+          <img
+            src="/images/logo-badge.jpg"
+            alt="GLX"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </button>
+      )}
     </div>
   );
 
