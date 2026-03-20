@@ -743,7 +743,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
 
         return (<>
           <div className="section-header"><h2><span className="orange-bar" /> Visão CEO — Painel Executivo Completo</h2></div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:8 }}>
+          <div className="kpi-ceo-grid" style={{ marginBottom: 8 }}>
             {cols.map(col => (
               <div key={col.title}>
                 {/* Column header */}
@@ -862,7 +862,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
             <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Cadastro manual para compor tabela e rankings</span>
           </div>
           <div className="chart-card-body" style={{ padding: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+            <div className="form-grid-4">
               {[
                 { key: 'name', label: 'Nome', placeholder: 'Ex.: Dra. Paula' },
                 { key: 'role', label: 'Area / funcao', placeholder: 'Ex.: Recepcao' },

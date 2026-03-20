@@ -3296,3 +3296,236 @@
     font-size: 18px;
   }
 }
+
+/* =============================================================
+   MOBILE — responsive layer (Android & iOS, any resolution)
+   ============================================================= */
+
+/* ── Utility: responsive 4-col KPI grid (replaces inline repeat(4,1fr)) ── */
+.glx-plan-dashboard-root .kpi-ceo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* ── Utility: responsive 4-col form grid (team member form) ── */
+.glx-plan-dashboard-root .form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* ── Touch & scroll improvements ── */
+.glx-plan-dashboard-root .content,
+.glx-plan-dashboard-root .sidebar {
+  -webkit-overflow-scrolling: touch;
+}
+
+.glx-plan-dashboard-root button,
+.glx-plan-dashboard-root [role="button"],
+.glx-plan-dashboard-root a,
+.glx-plan-dashboard-root select,
+.glx-plan-dashboard-root input {
+  touch-action: manipulation;
+}
+
+/* ── Table horizontal scroll wrapper ── */
+.glx-plan-dashboard-root .table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── iOS safe area (notch + home indicator) ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .glx-plan-dashboard-root .topbar {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  .glx-plan-dashboard-root .content {
+    padding-bottom: max(24px, calc(24px + env(safe-area-inset-bottom)));
+  }
+  .glx-plan-dashboard-root .sidebar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ── ≤1280px: 4 → 2 cols ── */
+@media (max-width: 1280px) {
+  .glx-plan-dashboard-root .kpi-ceo-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .glx-plan-dashboard-root .form-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── ≤980px: touch targets ── */
+@media (max-width: 980px) {
+  .glx-plan-dashboard-root .topbar-btn,
+  .glx-plan-dashboard-root .filter-select,
+  .glx-plan-dashboard-root .filter-clear,
+  .glx-plan-dashboard-root .filter-input {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+
+  .glx-plan-dashboard-root .sidebar-item {
+    min-height: 48px;
+    padding-block: 12px;
+  }
+
+  .glx-plan-dashboard-root .theme-toggle-wrapper {
+    min-height: 44px;
+  }
+}
+
+/* ── ≤720px: single column + table scroll ── */
+@media (max-width: 720px) {
+  .glx-plan-dashboard-root .kpi-ceo-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .glx-plan-dashboard-root .form-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  /* Always enable horizontal scroll for tables */
+  .glx-plan-dashboard-root .detail-section-body {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .glx-plan-dashboard-root .data-table {
+    min-width: 520px;
+  }
+
+  /* Compact overview cards */
+  .glx-plan-dashboard-root .overview-card {
+    min-height: 120px;
+    padding: 16px 14px;
+  }
+
+  .glx-plan-dashboard-root .topbar-title h1 {
+    font-size: clamp(1.1rem, 4vw, 2.15rem);
+  }
+}
+
+/* ── ≤480px: iPhones SE / compact Android ── */
+@media (max-width: 480px) {
+  .glx-plan-dashboard-root .content {
+    padding: 14px 12px 28px;
+  }
+
+  .glx-plan-dashboard-root .topbar {
+    padding: 14px 12px;
+  }
+
+  .glx-plan-dashboard-root .topbar::after {
+    left: 12px;
+    right: 12px;
+  }
+
+  .glx-plan-dashboard-root .form-grid-4 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .glx-plan-dashboard-root .overview-card {
+    min-height: 108px;
+    padding: 16px 14px;
+  }
+
+  .glx-plan-dashboard-root .overview-card-value {
+    font-size: clamp(1.5rem, 7vw, 2.4rem);
+  }
+
+  .glx-plan-dashboard-root .section-header h2 {
+    font-size: 16px;
+  }
+
+  .glx-plan-dashboard-root .chart-card-title {
+    font-size: 15px;
+  }
+
+  .glx-plan-dashboard-root .filter-bar {
+    padding: 12px 14px;
+  }
+
+  .glx-plan-dashboard-root .topbar-btn {
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+
+  .glx-plan-dashboard-root .chart-card {
+    min-height: auto;
+  }
+
+  .glx-plan-dashboard-root .section-header {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* ── ≤390px: iPhone 14 Pro / modern mid-range Android ── */
+@media (max-width: 390px) {
+  .glx-plan-dashboard-root .content {
+    padding: 12px 10px 24px;
+  }
+
+  .glx-plan-dashboard-root .topbar {
+    padding: 12px 10px;
+  }
+
+  .glx-plan-dashboard-root .topbar::after {
+    left: 10px;
+    right: 10px;
+  }
+
+  .glx-plan-dashboard-root .overview-card {
+    padding: 14px 12px;
+    min-height: 100px;
+  }
+
+  .glx-plan-dashboard-root .overview-card-value {
+    font-size: clamp(1.3rem, 8vw, 1.8rem);
+  }
+
+  .glx-plan-dashboard-root .chart-card-header {
+    padding: 14px 14px 0;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .glx-plan-dashboard-root .chart-card-body {
+    padding: 12px 12px 14px;
+  }
+
+  .glx-plan-dashboard-root .topbar-title h1 {
+    font-size: clamp(1rem, 5vw, 1.3rem);
+  }
+
+  .glx-plan-dashboard-root .topbar-title span {
+    font-size: 11px;
+  }
+
+  .glx-plan-dashboard-root .topbar-btn {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .glx-plan-dashboard-root .filter-bar {
+    padding: 10px 10px;
+  }
+
+  .glx-plan-dashboard-root .data-table th,
+  .glx-plan-dashboard-root .data-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
