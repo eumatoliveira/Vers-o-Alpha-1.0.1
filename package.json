@@ -4,7 +4,8 @@
   "type": "module",
   "license": "MIT",
   "overrides": {
-    "react-is": "19.2.0"
+    "react-is": "19.2.0",
+    "dompurify": ">=3.3.2"
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
@@ -20,8 +21,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.995.0",
-    "@aws-sdk/s3-request-presigner": "^3.995.0",
+    "@aws-sdk/client-s3": "^3.1014.0",
+    "@aws-sdk/s3-request-presigner": "^3.1014.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -74,7 +75,7 @@
     "i18next-browser-languagedetector": "^8.2.1",
     "input-otp": "^1.4.2",
     "jose": "6.1.0",
-    "jspdf": "^4.2.0",
+    "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.453.0",
     "mysql2": "^3.15.0",
@@ -143,7 +144,8 @@
       "esbuild": "0.25.10",
       "lodash": "4.17.23",
       "lodash-es": "4.17.23",
-      "mdast-util-to-hast": "13.2.1"
+      "mdast-util-to-hast": "13.2.1",
+      "dompurify": ">=3.3.2"
     }
   }
 }
