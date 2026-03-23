@@ -1,4 +1,4 @@
-import { useMemo, useCallback, memo } from 'react';
+import { useMemo, useCallback, memo, useState } from 'react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import FilterBar from './FilterBar';
 import IntegrationSection from './IntegrationSection';
@@ -39,6 +39,73 @@ interface Props {
 }
 
 type Priority = 'P1' | 'P2' | 'P3' | 'OK';
+
+const KPI_INFO: Record<string, { formula: string; explanation: string }> = {
+  'ocupacao': {
+    formula: 'Ocupação (%) = Consultas realizadas ÷ Capacidade disponível × 100',
+    explanation: 'Some as consultas realizadas no período, some a capacidade disponível dos slots/profissionais/unidades e divida realizadas por capacidade.',
+  },
+  'noshow': {
+    formula: 'No-Show (%) = No-Shows ÷ Total agendado × 100',
+    explanation: 'Conte os pacientes que não compareceram sem aviso prévio e divida pelo total de agendamentos do período.',
+  },
+  'confirmacoes': {
+    formula: 'Confirmações (%) = Confirmados ÷ Total agendado × 100',
+    explanation: 'Pacientes que responderam "sim" à confirmação (WhatsApp, ligação ou sistema) divididos pelo total de agendamentos.',
+  },
+  'leadtime': {
+    formula: 'Lead Time = Média dos dias entre solicitação e consulta realizada',
+    explanation: 'Para cada agendamento, calcule a diferença em dias entre a data do pedido e a data da consulta. Some tudo e divida pelo número de agendamentos.',
+  },
+  'faturamento': {
+    formula: 'Faturamento Bruto = Soma de todos os recebimentos no período',
+    explanation: 'Some todos os valores recebidos (consultas, procedimentos, convênios) sem descontar nenhuma despesa.',
+  },
+  'margem': {
+    formula: 'Margem (%) = (Receita Líquida − Despesas Totais) ÷ Receita Líquida × 100',
+    explanation: 'Receita líquida é o bruto menos glosas, cancelamentos e inadimplência. Despesas totais incluem fixas e variáveis. Divida o lucro pela receita líquida.',
+  },
+  'inadimplencia': {
+    formula: 'Inadimplência (%) = Valor não recebido ÷ Valor total emitido × 100',
+    explanation: 'Some os valores emitidos (notas/cobranças) e subtraia o que foi efetivamente recebido. Divida a diferença pelo total emitido.',
+  },
+  'despesasfixas': {
+    formula: 'Despesas Fixas (%) = Total de Despesas Fixas ÷ Receita Líquida × 100',
+    explanation: 'Some aluguel, folha, contratos e outros custos que não variam com o volume. Divida pela receita líquida do período.',
+  },
+  'leads': {
+    formula: 'Leads = Soma de todos os contatos iniciais no período',
+    explanation: 'Conte todos os novos contatos recebidos por canal (WhatsApp, Instagram, Google, indicação etc.) no período selecionado.',
+  },
+  'conversao': {
+    formula: 'Conversão (%) = Agendamentos efetivados ÷ Leads recebidos × 100',
+    explanation: 'De todos os leads que entraram em contato, quantos chegaram a marcar uma consulta? Divida agendamentos por leads.',
+  },
+  'cpl': {
+    formula: 'CPL = Investimento em marketing ÷ Leads gerados',
+    explanation: 'Some o total investido em anúncios, agência e produção no período e divida pelo número de leads captados.',
+  },
+  'roi': {
+    formula: 'ROI (%) = (Receita atribuída − Custo do canal) ÷ Custo do canal × 100',
+    explanation: 'Para cada canal, some a receita gerada pelos pacientes captados, subtraia o custo e divida pelo custo. 200% significa R$3 de retorno para cada R$1 investido.',
+  },
+  'nps': {
+    formula: 'NPS (0–10) = (% Promotores − % Detratores) × 10',
+    explanation: 'Notas 9–10 são promotores; 0–6 são detratores; 7–8 são neutros. Subtraia % detratores de % promotores e converta para escala 0–10.',
+  },
+  'espera': {
+    formula: 'Espera média = Soma dos tempos de espera ÷ Total de atendimentos',
+    explanation: 'Registre o tempo entre chegada do paciente e início do atendimento para cada consulta. Some todos e divida pelo número de atendimentos.',
+  },
+  'retorno': {
+    formula: 'Retorno (%) = Pacientes que retornaram ÷ Total atendidos × 100',
+    explanation: 'Conte quantos pacientes atendidos voltaram em uma segunda consulta dentro da janela (30, 90 ou 180 dias). Divida pelo total atendido no período.',
+  },
+  'sla': {
+    formula: 'SLA = Soma dos tempos de resposta ÷ Total de leads respondidos',
+    explanation: 'Para cada lead, calcule o tempo entre o primeiro contato e a primeira resposta da equipe. Some tudo e divida pelo número de leads atendidos.',
+  },
+};
 
 
 function toWeekKey(dateStr: string) {
@@ -377,6 +444,12 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
     ];
   }, [opsCurrent, kpis.realized, periodReturnLabel]);
 
+  const [kpiModal, setKpiModal] = useState<{ title: string; formula: string; explanation: string } | null>(null);
+  const openKpiModal = useCallback((title: string, kpiKey: string) => {
+    const info = KPI_INFO[kpiKey];
+    if (info) setKpiModal({ title, ...info });
+  }, []);
+
   const showFilterBar = activeTab !== 5;
 
   return (
@@ -402,41 +475,41 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
           const totalLeads = kpis.leads;
           const totalGross = kpis.grossRevenue;
 
-          const areas: { icon: string; label: string; items: { rule: any; kpiLabel: string; valueOverride?: string; meta: string }[] }[] = [
+          const areas: { icon: string; label: string; items: { rule: any; kpiLabel: string; valueOverride?: string; meta: string; kpiKey: string }[] }[] = [
             {
               icon: '🗓', label: t('Agenda & No-Show'),
               items: [
-                { rule: agendaRules[1], kpiLabel: t('Taxa de Ocupação (%)'), meta: t('Meta > 80% — agenda preenchida?') },
-                { rule: agendaRules[0], kpiLabel: t('Taxa de No-Show (%)'), meta: t('Meta < 8% — 1 em cada 12 pode faltar') },
-                { rule: agendaRules[2], kpiLabel: t('Confirmações Realizadas (%)'), meta: t('Meta > 85% — pacientes confirmaram?') },
-                { rule: agendaRules[6], kpiLabel: t('Lead Time do Agendamento (dias)'), meta: t('Meta < 3 dias de espera') },
+                { rule: agendaRules[1], kpiLabel: t('Taxa de Ocupação (%)'), meta: t('Meta > 80% — agenda preenchida?'), kpiKey: 'ocupacao' },
+                { rule: agendaRules[0], kpiLabel: t('Taxa de No-Show (%)'), meta: t('Meta < 8% — 1 em cada 12 pode faltar'), kpiKey: 'noshow' },
+                { rule: agendaRules[2], kpiLabel: t('Confirmações Realizadas (%)'), meta: t('Meta > 85% — pacientes confirmaram?'), kpiKey: 'confirmacoes' },
+                { rule: agendaRules[6], kpiLabel: t('Lead Time do Agendamento (dias)'), meta: t('Meta < 3 dias de espera'), kpiKey: 'leadtime' },
               ],
             },
             {
               icon: '💰', label: t('Financeiro'),
               items: [
-                { rule: financeRules[0], kpiLabel: `${t('Faturamento Bruto')} ${pSuffix}`, valueOverride: fmt(totalGross), meta: t('Total recebido no período') },
-                { rule: financeRules[2], kpiLabel: t('Margem Líquida (%)'), meta: t('Meta > 20% — seu lucro real por R$100') },
-                { rule: financeRules[4], kpiLabel: t('Inadimplência (%)'), meta: t('Meta < 4% — quem não pagou?') },
-                { rule: financeRules[5], kpiLabel: t('Despesas Fixas / Receita (%)'), meta: t('Meta < 45% — custo fixo sobre receita') },
+                { rule: financeRules[0], kpiLabel: `${t('Faturamento Bruto')} ${pSuffix}`, valueOverride: fmt(totalGross), meta: t('Total recebido no período'), kpiKey: 'faturamento' },
+                { rule: financeRules[2], kpiLabel: t('Margem Líquida (%)'), meta: t('Meta > 20% — seu lucro real por R$100'), kpiKey: 'margem' },
+                { rule: financeRules[4], kpiLabel: t('Inadimplência (%)'), meta: t('Meta < 4% — quem não pagou?'), kpiKey: 'inadimplencia' },
+                { rule: financeRules[5], kpiLabel: t('Despesas Fixas / Receita (%)'), meta: t('Meta < 45% — custo fixo sobre receita'), kpiKey: 'despesasfixas' },
               ],
             },
             {
               icon: '📣', label: t('Marketing & Captação'),
               items: [
-                { rule: marketingRules[0], kpiLabel: `${t('Leads Gerados')} ${pSuffix}`, valueOverride: String(totalLeads), meta: t('Novos interessados — crescendo?') },
-                { rule: marketingRules[1], kpiLabel: t('Conversão Lead → Agendamento (%)'), meta: t('Meta > 25% — quantos viraram consulta?') },
-                { rule: marketingRules[3], kpiLabel: t('CPL — Custo por Paciente'), meta: t('Custo por novo paciente captado') },
-                { rule: marketingRules[4], kpiLabel: t('ROI por Canal (%)'), meta: t('Meta > 200% — marketing compensa?') },
+                { rule: marketingRules[0], kpiLabel: `${t('Leads Gerados')} ${pSuffix}`, valueOverride: String(totalLeads), meta: t('Novos interessados — crescendo?'), kpiKey: 'leads' },
+                { rule: marketingRules[1], kpiLabel: t('Conversão Lead → Agendamento (%)'), meta: t('Meta > 25% — quantos viraram consulta?'), kpiKey: 'conversao' },
+                { rule: marketingRules[3], kpiLabel: t('CPL — Custo por Paciente'), meta: t('Custo por novo paciente captado'), kpiKey: 'cpl' },
+                { rule: marketingRules[4], kpiLabel: t('ROI por Canal (%)'), meta: t('Meta > 200% — marketing compensa?'), kpiKey: 'roi' },
               ],
             },
             {
               icon: '⚙', label: t('Operação & UX'),
               items: [
-                { rule: opsRules[0], kpiLabel: t('NPS Geral (0–10)'), meta: t('Meta > 8,5 — paciente indicaria você?') },
-                { rule: opsRules[1], kpiLabel: t('Tempo Médio de Espera (min)'), meta: t('Meta < 12 min em sala de espera') },
-                { rule: opsRules[2], kpiLabel: `${t('Taxa de Retorno')} ${periodReturnLabel} (%)`, meta: `${t('Meta > 40% — paciente voltou em')} ${periodReturnLabel}?` },
-                { rule: opsRules[3], kpiLabel: t('SLA de Resposta ao Lead (h)'), meta: t('Meta < 1h para responder o paciente') },
+                { rule: opsRules[0], kpiLabel: t('NPS Geral (0–10)'), meta: t('Meta > 8,5 — paciente indicaria você?'), kpiKey: 'nps' },
+                { rule: opsRules[1], kpiLabel: t('Tempo Médio de Espera (min)'), meta: t('Meta < 12 min em sala de espera'), kpiKey: 'espera' },
+                { rule: opsRules[2], kpiLabel: `${t('Taxa de Retorno')} ${periodReturnLabel} (%)`, meta: `${t('Meta > 40% — paciente voltou em')} ${periodReturnLabel}?`, kpiKey: 'retorno' },
+                { rule: opsRules[3], kpiLabel: t('SLA de Resposta ao Lead (h)'), meta: t('Meta < 1h para responder o paciente'), kpiKey: 'sla' },
               ],
             },
           ];
@@ -447,15 +520,16 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
                   <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',paddingLeft:2}}>
                     {area.icon} {area.label}
                   </div>
-                  {area.items.filter(i => i.rule).map(({ rule: r, kpiLabel, valueOverride, meta }) => {
+                  {area.items.filter(i => i.rule).map(({ rule: r, kpiLabel, valueOverride, meta, kpiKey }) => {
                     const clr = pColor(r.priority);
                     return (
-                      <div key={r.id} className="overview-card" style={{borderTop:`3px solid ${clr}`,padding:'12px 14px',cursor:'default'}}>
+                      <div key={r.id} className="overview-card" onClick={() => openKpiModal(kpiLabel, kpiKey)} style={{borderTop:`3px solid ${clr}`,padding:'12px 14px',cursor:'pointer',position:'relative'}}>
                         <div className="overview-card-label" style={{fontSize:11,marginBottom:4}}>{kpiLabel}</div>
                         <div className="overview-card-value" style={{color:clr,fontSize:26,lineHeight:1.1}}>{valueOverride ?? r.value}</div>
                         <div className="overview-card-info" style={{marginTop:4}}>
                           <span style={{fontSize:10,color:'var(--text-muted)'}}>{meta}</span>
                         </div>
+                        <span style={{position:'absolute',top:8,right:10,fontSize:13,color:'var(--text-muted)',opacity:0.5}}>?</span>
                       </div>
                     );
                   })}
@@ -584,7 +658,60 @@ function EssentialDashboard({ activeTab, filters, onFiltersChange, appointments,
           })()}
         </div>
         <OperacaoUXModule opsWeeks={opsWeeks} filtered={filtered} kpis={kpis} byProf={byProf} filters={filters} showTargets={filters.severity !== ''} plan="ESSENTIAL" />
-      </>)}    </div>
+      </>)}
+
+      {/* ── KPI INFO MODAL ── */}
+      {kpiModal && (
+        <div
+          onClick={() => setKpiModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 20, padding: '32px 36px',
+              maxWidth: 560, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+              position: 'relative',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <span style={{ fontSize: 22, color: '#6b7280' }}>?</span>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1e293b' }}>
+                {kpiModal.title}
+              </h2>
+              <button
+                onClick={() => setKpiModal(null)}
+                style={{
+                  marginLeft: 'auto', width: 32, height: 32, borderRadius: '50%',
+                  border: '1px solid #e5e7eb', background: '#f9fafb',
+                  cursor: 'pointer', fontSize: 16, color: '#6b7280',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ height: 1, background: '#f1f5f9', marginBottom: 20 }} />
+            {/* Como calcular */}
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Como Calcular
+            </p>
+            <p style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.5 }}>
+              {kpiModal.formula}
+            </p>
+            <p style={{ margin: 0, fontSize: 14, color: '#64748b', lineHeight: 1.65 }}>
+              {kpiModal.explanation}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

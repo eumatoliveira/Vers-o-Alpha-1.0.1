@@ -45,6 +45,25 @@ interface Props {
 type Priority = 'P1' | 'P2' | 'P3' | 'OK';
 type ProfessionalRow = ReturnType<typeof computeByProfessional>[number];
 
+const KPI_INFO: Record<string, { formula: string; explanation: string }> = {
+  ocupacao:     { formula: 'Ocupação (%) = Consultas realizadas ÷ Capacidade disponível × 100', explanation: 'Some as consultas realizadas no período, some a capacidade disponível dos slots/profissionais/unidades e divida realizadas por capacidade.' },
+  noshow:       { formula: 'No-Show (%) = No-Shows ÷ Total agendado × 100', explanation: 'Conte os pacientes que não compareceram sem aviso prévio e divida pelo total de agendamentos do período.' },
+  confirmacoes: { formula: 'Confirmações (%) = Confirmados ÷ Total agendado × 100', explanation: 'Pacientes que responderam "sim" à confirmação (WhatsApp, ligação ou sistema) divididos pelo total de agendamentos.' },
+  leadtime:     { formula: 'Lead Time = Média dos dias entre solicitação e consulta realizada', explanation: 'Para cada agendamento, calcule a diferença em dias entre a data do pedido e a data da consulta. Some tudo e divida pelo número de agendamentos.' },
+  faturamento:  { formula: 'Faturamento Bruto = Soma de todos os recebimentos no período', explanation: 'Some todos os valores recebidos (consultas, procedimentos, convênios) sem descontar nenhuma despesa.' },
+  margem:       { formula: 'Margem (%) = (Receita Líquida − Despesas Totais) ÷ Receita Líquida × 100', explanation: 'Receita líquida é o bruto menos glosas, cancelamentos e inadimplência. Despesas totais incluem fixas e variáveis. Divida o lucro pela receita líquida.' },
+  inadimplencia:{ formula: 'Inadimplência (%) = Valor não recebido ÷ Valor total emitido × 100', explanation: 'Some os valores emitidos (notas/cobranças) e subtraia o que foi efetivamente recebido. Divida a diferença pelo total emitido.' },
+  despesasfixas:{ formula: 'Despesas Fixas (%) = Total de Despesas Fixas ÷ Receita Líquida × 100', explanation: 'Some aluguel, folha, contratos e outros custos que não variam com o volume. Divida pela receita líquida do período.' },
+  leads:        { formula: 'Leads = Soma de todos os contatos iniciais no período', explanation: 'Conte todos os novos contatos recebidos por canal (WhatsApp, Instagram, Google, indicação etc.) no período selecionado.' },
+  conversao:    { formula: 'Conversão (%) = Agendamentos efetivados ÷ Leads recebidos × 100', explanation: 'De todos os leads que entraram em contato, quantos chegaram a marcar uma consulta? Divida agendamentos por leads.' },
+  cpl:          { formula: 'CPL = Investimento em marketing ÷ Leads gerados', explanation: 'Some o total investido em anúncios, agência e produção no período e divida pelo número de leads captados.' },
+  roi:          { formula: 'ROI (%) = (Receita atribuída − Custo do canal) ÷ Custo do canal × 100', explanation: 'Para cada canal, some a receita gerada pelos pacientes captados, subtraia o custo e divida pelo custo. 200% significa R$3 de retorno para cada R$1 investido.' },
+  nps:          { formula: 'NPS (0–10) = (% Promotores − % Detratores) × 10', explanation: 'Notas 9–10 são promotores; 0–6 são detratores; 7–8 são neutros. Subtraia % detratores de % promotores e converta para escala 0–10.' },
+  espera:       { formula: 'Espera média = Soma dos tempos de espera ÷ Total de atendimentos', explanation: 'Registre o tempo entre chegada do paciente e início do atendimento para cada consulta. Some todos e divida pelo número de atendimentos.' },
+  retorno:      { formula: 'Retorno (%) = Pacientes que retornaram ÷ Total atendidos × 100', explanation: 'Conte quantos pacientes atendidos voltaram em uma segunda consulta dentro da janela (30, 90 ou 180 dias). Divida pelo total atendido no período.' },
+  sla:          { formula: 'SLA = Soma dos tempos de resposta ÷ Total de leads respondidos', explanation: 'Para cada lead, calcule o tempo entre o primeiro contato e a primeira resposta da equipe. Some tudo e divida pelo número de leads atendidos.' },
+};
+
 type TeamMemberForm = {
   name: string;
   role: string;
@@ -96,6 +115,11 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
   const [editingBaseTeamMemberName, setEditingBaseTeamMemberName] = useState<string | null>(null);
   const [deletedBaseTeamMemberNames, setDeletedBaseTeamMemberNames] = useState<string[]>([]);
   const [baseTeamMemberOverrides, setBaseTeamMemberOverrides] = useState<Record<string, ProfessionalRow>>({});
+  const [kpiModal, setKpiModal] = useState<{ title: string; formula: string; explanation: string } | null>(null);
+  const openKpiModal = useCallback((title: string, kpiKey: string) => {
+    const info = KPI_INFO[kpiKey];
+    if (info) setKpiModal({ title, ...info });
+  }, []);
   const activeChannels = useMemo(() => byChannel.filter(c => c.total > 0), [byChannel]);
   const displayedTeamMembers = useMemo(() => [
     ...byProf
@@ -429,37 +453,37 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
           {
             icon: '📋', title: t('Agenda & No-Show'),
             cards: [
-              { label:t('Taxa de Ocupação (%)'),              value:`${kpis.occupancyRate.toFixed(1)}%`,      color:cl(kpis.occupancyRate,80,60),                              desc:t('Meta > 80% — agenda preenchida?') },
-              { label:t('Taxa de No-Show (%)'),               value:`${kpis.noShowRate.toFixed(1)}%`,         color:cl(kpis.noShowRate,8,12,true),                             desc:t('Meta < 8% — 1 em cada 12 pode faltar') },
-              { label:t('Confirmações Realizadas (%)'),        value:`${kpis.confirmationRate.toFixed(1)}%`,   color:cl(kpis.confirmationRate,85,70),                           desc:t('Meta > 85% — pacientes confirmaram?') },
-              { label:t('Lead Time do Agendamento (dias)'),    value:`${kpis.leadTimeDays.toFixed(1)}d`,       color:cl(kpis.leadTimeDays,3,7,true),                            desc:t('Meta < 3 dias de espera') },
+              { label:t('Taxa de Ocupação (%)'),              value:`${kpis.occupancyRate.toFixed(1)}%`,      color:cl(kpis.occupancyRate,80,60),                              desc:t('Meta > 80% — agenda preenchida?'),           kpiKey:'ocupacao' },
+              { label:t('Taxa de No-Show (%)'),               value:`${kpis.noShowRate.toFixed(1)}%`,         color:cl(kpis.noShowRate,8,12,true),                             desc:t('Meta < 8% — 1 em cada 12 pode faltar'),      kpiKey:'noshow' },
+              { label:t('Confirmações Realizadas (%)'),        value:`${kpis.confirmationRate.toFixed(1)}%`,   color:cl(kpis.confirmationRate,85,70),                           desc:t('Meta > 85% — pacientes confirmaram?'),       kpiKey:'confirmacoes' },
+              { label:t('Lead Time do Agendamento (dias)'),    value:`${kpis.leadTimeDays.toFixed(1)}d`,       color:cl(kpis.leadTimeDays,3,7,true),                            desc:t('Meta < 3 dias de espera'),                   kpiKey:'leadtime' },
             ],
           },
           {
             icon: '💰', title: t('Financeiro'),
             cards: [
-              { label:`${moneyTitle('Faturamento Bruto')} ${pSuffix}`, value:fmt(kpis.grossRevenue),          color:CL.amber,                                                  desc:t('Total recebido no período') },
-              { label:t('Margem Líquida (%)'),                 value:`${kpis.margin.toFixed(1)}%`,            color:cl(kpis.margin,25,15),                                     desc:t('Meta > 20% — seu lucro real por R$100') },
-              { label:t('Inadimplência (%)'),                  value:`${kpis.inadimplenciaRate.toFixed(1)}%`, color:cl(kpis.inadimplenciaRate,4,8,true),                       desc:t('Meta < 4% — quem não pagou?') },
-              { label:t('Despesas Fixas / Receita (%)'),       value:`${kpis.fixedExpenseRatio.toFixed(1)}%`, color:cl(kpis.fixedExpenseRatio,45,55,true),                     desc:t('Meta < 45% — custo fixo sobre receita') },
+              { label:`${moneyTitle('Faturamento Bruto')} ${pSuffix}`, value:fmt(kpis.grossRevenue),          color:CL.amber,                                                  desc:t('Total recebido no período'),                 kpiKey:'faturamento' },
+              { label:t('Margem Líquida (%)'),                 value:`${kpis.margin.toFixed(1)}%`,            color:cl(kpis.margin,25,15),                                     desc:t('Meta > 20% — seu lucro real por R$100'),     kpiKey:'margem' },
+              { label:t('Inadimplência (%)'),                  value:`${kpis.inadimplenciaRate.toFixed(1)}%`, color:cl(kpis.inadimplenciaRate,4,8,true),                       desc:t('Meta < 4% — quem não pagou?'),               kpiKey:'inadimplencia' },
+              { label:t('Despesas Fixas / Receita (%)'),       value:`${kpis.fixedExpenseRatio.toFixed(1)}%`, color:cl(kpis.fixedExpenseRatio,45,55,true),                     desc:t('Meta < 45% — custo fixo sobre receita'),     kpiKey:'despesasfixas' },
             ],
           },
           {
             icon: '🚀', title: t('Marketing & Captação'),
             cards: [
-              { label:`${t('Leads Gerados')} ${pSuffix}`,      value:`${kpis.leads}`,                         color:kpis.leads>=80?CL.green:kpis.leads>=40?CL.amber:CL.red,   desc:t('Novos interessados — crescendo?') },
-              { label:t('Conversão Lead → Agendamento (%)'),   value:`${convLeadToAppt.toFixed(1)}%`,         color:cl(convLeadToAppt,22,15),                                  desc:t('Meta > 25% — quantos viraram consulta?') },
-              { label:t('CPL — Custo por Paciente'),           value:fmt(kpis.cpl),                           color:cl(kpis.cpl,kpis.avgTicket/4,kpis.avgTicket*0.6,true),    desc:t('Custo por novo paciente captado') },
-              { label:t('ROI Total e por Canal (%)'),            value:roiLabel,                                color:roiColor,                                                  desc:filters.channel ? `Canal: ${filters.channel}` : t('Meta > 200% — marketing compensa?') },
+              { label:`${t('Leads Gerados')} ${pSuffix}`,      value:`${kpis.leads}`,                         color:kpis.leads>=80?CL.green:kpis.leads>=40?CL.amber:CL.red,   desc:t('Novos interessados — crescendo?'),            kpiKey:'leads' },
+              { label:t('Conversão Lead → Agendamento (%)'),   value:`${convLeadToAppt.toFixed(1)}%`,         color:cl(convLeadToAppt,22,15),                                  desc:t('Meta > 25% — quantos viraram consulta?'),    kpiKey:'conversao' },
+              { label:t('CPL — Custo por Paciente'),           value:fmt(kpis.cpl),                           color:cl(kpis.cpl,kpis.avgTicket/4,kpis.avgTicket*0.6,true),    desc:t('Custo por novo paciente captado'),            kpiKey:'cpl' },
+              { label:t('ROI Total e por Canal (%)'),            value:roiLabel,                                color:roiColor,                                                  desc:filters.channel ? `Canal: ${filters.channel}` : t('Meta > 200% — marketing compensa?'), kpiKey:'roi' },
             ],
           },
           {
             icon: '⚙️', title: t('Operação & UX'),
             cards: [
-              { label:t('NPS Geral (0–10)'),                   value:`${kpis.avgNPS.toFixed(1)}`,             color:cl(kpis.avgNPS,8.5,7),                                     desc:t('Meta > 8,5 — paciente indicaria você?') },
-              { label:t('Tempo Médio de Espera (min)'),        value:`${kpis.avgWait.toFixed(0)} min`,        color:cl(kpis.avgWait,12,20,true),                               desc:t('Meta < 12 min em sala de espera') },
-              { label:`${t('Taxa de Retorno')} ${periodReturnLabel} (%)`, value:`${kpis.returnRate.toFixed(1)}%`, color:cl(kpis.returnRate,40,25), desc:`${t('Meta > 40% — paciente voltou em')} ${periodReturnLabel}?` },
-              { label:t('SLA de Resposta ao Lead (h)'),        value:`${kpis.slaLeadHours.toFixed(2)}h`,      color:cl(kpis.slaLeadHours,1,2,true),                            desc:t('Meta < 1h para responder o paciente') },
+              { label:t('NPS Geral (0–10)'),                   value:`${kpis.avgNPS.toFixed(1)}`,             color:cl(kpis.avgNPS,8.5,7),                                     desc:t('Meta > 8,5 — paciente indicaria você?'),     kpiKey:'nps' },
+              { label:t('Tempo Médio de Espera (min)'),        value:`${kpis.avgWait.toFixed(0)} min`,        color:cl(kpis.avgWait,12,20,true),                               desc:t('Meta < 12 min em sala de espera'),            kpiKey:'espera' },
+              { label:`${t('Taxa de Retorno')} ${periodReturnLabel} (%)`, value:`${kpis.returnRate.toFixed(1)}%`, color:cl(kpis.returnRate,40,25), desc:`${t('Meta > 40% — paciente voltou em')} ${periodReturnLabel}?`, kpiKey:'retorno' },
+              { label:t('SLA de Resposta ao Lead (h)'),        value:`${kpis.slaLeadHours.toFixed(2)}h`,      color:cl(kpis.slaLeadHours,1,2,true),                            desc:t('Meta < 1h para responder o paciente'),       kpiKey:'sla' },
             ],
           },
         ];
@@ -477,7 +501,7 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
                 {/* Score cards */}
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {col.cards.map(card => (
-                    <div key={card.label} style={{
+                    <div key={card.label} onClick={() => openKpiModal(card.label, card.kpiKey)} style={{
                       background:'var(--panel-bg,#fff)',
                       borderRadius:12,
                       boxShadow:'0 2px 8px rgba(0,0,0,0.06)',
@@ -485,7 +509,10 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
                       borderTop:`4px solid ${card.color}`,
                       padding:'14px 16px',
                       transition:'box-shadow 200ms ease',
+                      cursor:'pointer',
+                      position:'relative',
                     }}>
+                      <span style={{position:'absolute',top:8,right:10,fontSize:13,color:'var(--text-muted)',opacity:0.45}}>?</span>
                       <div style={{ fontSize:10, fontWeight:700, letterSpacing:0.8, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:8, lineHeight:1.3 }}>
                         {card.label}
                       </div>
@@ -518,12 +545,93 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
       {/* ===== AGENDA / OTIMIZAÇÃO ===== */}
       {activeTab === 1 && (<>
         <div className="section-header"><h2><span className="orange-bar" /> Agenda & No-Show</h2></div>
-        <div className="overview-row">
-          <div className="overview-card"><div className="overview-card-label">Total</div><div className="overview-card-value">{kpis.total}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Realizadas</div><div className="overview-card-value">{kpis.realized}</div></div>
-          <div className="overview-card"><div className="overview-card-label">Ocupação</div><div className="overview-card-value">{kpis.occupancyRate.toFixed(1)}%</div></div>
-          <div className="overview-card"><div className="overview-card-label">Ociosidade</div><div className="overview-card-value" style={{color:'var(--yellow)'}}>{(100-kpis.occupancyRate).toFixed(1)}%</div></div>
-        </div>
+        {(() => {
+          const G = 'var(--green)', Y = 'var(--yellow)', R = 'var(--red)';
+          const noShowCount   = filtered.filter(a => a.status === 'No-Show').length;
+          const cancelCount   = filtered.filter(a => a.status === 'Cancelada').length;
+          const lostCapRate   = kpis.total > 0 ? ((noShowCount + cancelCount) / kpis.total) * 100 : 0;
+          const costNoShow    = noShowCount * kpis.avgTicket;
+          const periodDays    = filters.period === '7d' ? 7 : filters.period === '15d' ? 15
+                              : filters.period === '3m' ? 90 : filters.period === '6m' ? 180
+                              : filters.period === '1 ano' ? 365 : 30;
+          const periodMult    = periodDays / 30;
+          const costP1Scaled  = 2000 * periodMult;
+          const costP3Scaled  = 5000 * periodMult;
+          const topChannel    = (() => {
+            const counts = new Map<string, number>();
+            filtered.forEach(a => counts.set(a.channel, (counts.get(a.channel) ?? 0) + 1));
+            return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0];
+          })();
+
+          const cards = [
+            {
+              label: 'Taxa de No-Show (%)',
+              value: `${kpis.noShowRate.toFixed(1)}%`,
+              color: kpis.noShowRate < 8 ? G : kpis.noShowRate < 15 ? Y : R,
+              meta: 'P1 < 8% | P2 8–15% | P3 > 15%',
+            },
+            {
+              label: 'Custo Estimado do No-Show',
+              value: fmt(costNoShow),
+              color: costNoShow < costP1Scaled ? G : costNoShow < costP3Scaled ? Y : R,
+              meta: `${noShowCount} no-shows × ticket médio`,
+            },
+            {
+              label: 'Taxa de Ocupação (%)',
+              value: `${kpis.occupancyRate.toFixed(1)}%`,
+              color: kpis.occupancyRate >= 80 ? G : kpis.occupancyRate >= 65 ? Y : R,
+              meta: 'P1 > 80% | P2 65–80% | P3 < 65%',
+            },
+            {
+              label: 'Confirmações Realizadas (%)',
+              value: `${kpis.confirmationRate.toFixed(1)}%`,
+              color: kpis.confirmationRate >= 85 ? G : kpis.confirmationRate >= 70 ? Y : R,
+              meta: 'P1 > 85% | P2 70–85% | P3 < 70%',
+            },
+            {
+              label: 'Consultas Realizadas',
+              value: String(kpis.realized),
+              color: kpis.occupancyRate >= 80 ? G : kpis.occupancyRate >= 65 ? Y : R,
+              meta: `de ${kpis.total} agendados`,
+            },
+            {
+              label: 'Perda de Capacidade não Recuperável (%)',
+              value: `${lostCapRate.toFixed(1)}%`,
+              color: lostCapRate < 8 ? G : lostCapRate < 15 ? Y : R,
+              meta: 'No-shows + cancelamentos ÷ total',
+            },
+            {
+              label: 'Total de Agendamentos',
+              value: String(kpis.total),
+              color: G,
+              meta: 'Total agendado no período',
+            },
+            {
+              label: 'Canal de Aquisição (Top)',
+              value: topChannel ? topChannel[0] : '—',
+              color: G,
+              meta: topChannel ? `${topChannel[1]} agendamentos pelo canal principal` : 'Sem dados',
+            },
+            {
+              label: 'Lead Time do Agendamento',
+              value: `${kpis.leadTimeDays.toFixed(1)}d`,
+              color: kpis.leadTimeDays < 3 ? G : kpis.leadTimeDays < 7 ? Y : R,
+              meta: 'P1 < 3d | P2 3–7d | P3 > 7d',
+            },
+          ];
+
+          return (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:10, marginBottom:16 }}>
+              {cards.map(card => (
+                <div key={card.label} className="overview-card" style={{ borderTop:`3px solid ${card.color}`, padding:'12px 14px' }}>
+                  <div className="overview-card-label" style={{ fontSize:10, marginBottom:6 }}>{card.label}</div>
+                  <div className="overview-card-value" style={{ color:card.color, fontSize:24, lineHeight:1.1 }}>{card.value}</div>
+                  <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4, lineHeight:1.3 }}>{card.meta}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         <AgendaNoShowModule agendaWeeks={agendaWeeksForModule} filtered={filtered} kpis={kpis} filters={filters} showTargets={filters.severity !== ''} plan="PRO" />
       </>)}
       {/* ===== MARKETING / UNIT ECONOMICS ===== */}
@@ -672,6 +780,56 @@ function ProDashboard({ activeTab, theme, visualScale, filters, onFiltersChange,
 
       {/* ===== FLOATING AI ASSISTANT ===== */}
       <AIAssistantModule kpis={kpis} fmt={fmt} />
+
+      {/* ── KPI INFO MODAL ── */}
+      {kpiModal && (
+        <div
+          onClick={() => setKpiModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 20, padding: '32px 36px',
+              maxWidth: 560, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+              position: 'relative',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+              <span style={{ fontSize: 22, color: '#6b7280' }}>?</span>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1e293b' }}>
+                {kpiModal.title}
+              </h2>
+              <button
+                onClick={() => setKpiModal(null)}
+                style={{
+                  marginLeft: 'auto', width: 32, height: 32, borderRadius: '50%',
+                  border: '1px solid #e5e7eb', background: '#f9fafb',
+                  cursor: 'pointer', fontSize: 16, color: '#6b7280',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ height: 1, background: '#f1f5f9', marginBottom: 20 }} />
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Como Calcular
+            </p>
+            <p style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.5 }}>
+              {kpiModal.formula}
+            </p>
+            <p style={{ margin: 0, fontSize: 14, color: '#64748b', lineHeight: 1.65 }}>
+              {kpiModal.explanation}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

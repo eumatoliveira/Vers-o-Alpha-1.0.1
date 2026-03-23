@@ -107,7 +107,7 @@ interface Props {
   plan?: 'ESSENTIAL' | 'PRO' | 'ENTERPRISE';
 }
 
-export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, plan = 'ESSENTIAL' }: Props) {
+export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, filters, showTargets, plan = 'ESSENTIAL' }: Props) {
   const isPro = plan === 'PRO' || plan === 'ENTERPRISE';
 
   // KPI 1 — No-show rate series
@@ -179,11 +179,26 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
 
   // Priority helpers — usam AGENDA_THRESHOLDS (configuráveis via setup)
   const T = AGENDA_THRESHOLDS;
+
+  // Multiplicador proporcional ao período selecionado (base = 30d)
+  const periodDays = filters.period === '7d' ? 7 : filters.period === '15d' ? 15
+                   : filters.period === '3m' ? 90 : filters.period === '6m' ? 180
+                   : filters.period === '1 ano' ? 365 : 30;
+  const periodMult  = periodDays / 30;
+  const costP1 = Math.round(T.noShowCost.p1 * periodMult);
+  const costP3 = Math.round(T.noShowCost.p3 * periodMult);
+  const fmtCostThr = (v: number) => v >= 1000 ? `R$${(v / 1000 % 1 === 0 ? v / 1000 : (v / 1000).toFixed(1))}k` : `R$${v}`;
+  const costP1Label = fmtCostThr(costP1);
+  const costP3Label = fmtCostThr(costP3);
+  const periodLabel = filters.period === '7d' ? 'semana' : filters.period === '15d' ? 'quinzena'
+                    : filters.period === '3m' ? 'trimestre' : filters.period === '6m' ? 'semestre'
+                    : filters.period === '1 ano' ? 'ano' : 'mês';
+
   const noShowPriority   = (v: number) => v > T.noShow.p3    ? 'P3' : v >= T.noShow.p1    ? 'P2' : 'P1';
   const occPriority      = (v: number) => v < T.occupancy.p3 ? 'P3' : v < T.occupancy.p1  ? 'P2' : 'P1';
   const confPriority     = (v: number) => v < T.confirm.p3   ? 'P3' : v < T.confirm.p1    ? 'P2' : 'P1';
   const leadTimePriority = (v: number) => v > T.leadTime.p3  ? 'P3' : v > T.leadTime.p2   ? 'P2' : 'P1';
-  const noShowCostPriority = (v: number) => v > T.noShowCost.p3 ? 'P3' : v > T.noShowCost.p1 ? 'P2' : 'P1';
+  const noShowCostPriority = (v: number) => v > costP3 ? 'P3' : v > costP1 ? 'P2' : 'P1';
   const lostCapPriority  = (v: number) => v > T.lostCap.p3   ? 'P3' : v >= T.lostCap.p1   ? 'P2' : 'P1';
 
   // Consultas: P1 ≥ 100% da meta | P2 80-99% | P3 < 80%
@@ -339,7 +354,7 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
         kpiValue={`R$ ${(lastNoShowCost/1000).toFixed(1)}k`}
         subtitle="Custo mensal e acumulado de consultas perdidas"
         fullWidth
-        note={`Verde < R$2k/mês | Amarelo R$2-5k | Vermelho > R$5k/mês`}
+        note={`Verde < ${costP1Label}/${periodLabel} | Amarelo ${costP1Label}–${costP3Label} | Vermelho > ${costP3Label}/${periodLabel}`}
       >
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={noShowCostSeries} margin={{ top: 10, right: 40, left: 10, bottom: 0 }}>
@@ -350,10 +365,10 @@ export function AgendaNoShowModule({ agendaWeeks, filtered, kpis, showTargets, p
             <Tooltip {...TOOLTIP_STYLE} formatter={(v: any, name: any) => [
               `R$ ${(v as number).toLocaleString('pt-BR')}`, name === 'monthlyCost' ? 'Custo no período' : 'Acumulado'
             ]} />
-            <ReferenceLine yAxisId="left" y={T.noShowCost.p1} stroke={C.green} strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: 'P1 R$2k', position: 'insideTopRight', fill: C.green, fontSize: 10 }} />
-            <ReferenceLine yAxisId="left" y={T.noShowCost.p3} stroke={C.red}   strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: 'P3 R$5k', position: 'insideTopRight', fill: C.red,   fontSize: 10 }} />
+            <ReferenceLine yAxisId="left" y={costP1} stroke={C.green} strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: `P1 ${costP1Label}`, position: 'insideTopRight', fill: C.green, fontSize: 10 }} />
+            <ReferenceLine yAxisId="left" y={costP3} stroke={C.red}   strokeDasharray="4 3" strokeWidth={1.5}
+              label={{ value: `P3 ${costP3Label}`, position: 'insideTopRight', fill: C.red,   fontSize: 10 }} />
             <Bar yAxisId="left" dataKey="monthlyCost" name="monthlyCost" fill={C.red} fillOpacity={0.7} radius={[4, 4, 0, 0]} animationDuration={300} />
             <Line yAxisId="right" type="monotone" dataKey="accumulated" name="accumulated" stroke="#BA7517" strokeWidth={2} dot={{ r: 3 }} animationDuration={300} />
           </ComposedChart>
