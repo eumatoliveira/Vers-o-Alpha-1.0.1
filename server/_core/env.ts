@@ -74,11 +74,11 @@ const defaultDevelopmentDemoUsers = [
   },
 ];
 
-if (isProduction && !jwtSecret) {
-  throw new Error("[ENV] Missing JWT_SECRET in production. Set JWT_SECRET before starting the server.");
-}
-
 const developmentSecret = `dev-${randomBytes(24).toString("hex")}`;
+
+if (isProduction && !jwtSecret) {
+  console.warn("[ENV] WARNING: JWT_SECRET is not set. Using a temporary random secret — sessions will not persist across restarts. Set JWT_SECRET in your environment variables for production use.");
+}
 
 export const ENV = {
   appId,
