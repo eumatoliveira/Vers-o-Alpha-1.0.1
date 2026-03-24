@@ -175,7 +175,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
-  const theme: "light" | "dark" = "light";
+  const theme = "light" as string;
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || "GLX Admin");
   const [profileEmail, setProfileEmail] = useState(user?.email || "admin@glx.local");

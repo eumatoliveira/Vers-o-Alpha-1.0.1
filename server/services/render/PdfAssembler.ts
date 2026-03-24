@@ -496,6 +496,7 @@ function buildReport(payload: ExportPayload, rates?: ExchangeRateSnapshot): Repo
     rates: {
       BRL: 1,
       USD: currency === "USD" ? 1 : Number.NaN,
+      EUR: currency === "EUR" ? 1 : Number.NaN,
       ARS: currency === "ARS" ? 1 : Number.NaN,
       CLP: currency === "CLP" ? 1 : Number.NaN,
       COP: currency === "COP" ? 1 : Number.NaN,

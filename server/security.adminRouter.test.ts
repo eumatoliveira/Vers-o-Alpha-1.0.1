@@ -9,6 +9,15 @@ describe("admin security sanitizers", () => {
       openId: "openid-secret",
       passwordHash: "bcrypt-hash",
       role: "admin",
+      name: null,
+      loginMethod: null,
+      plan: "essencial",
+      preferredCurrency: "BRL",
+      mfaEnabled: false,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
     });
 
     expect(sanitized).toMatchObject({
@@ -22,12 +31,21 @@ describe("admin security sanitizers", () => {
 
   it("removes integration secrets and keeps only presence flags", () => {
     const sanitized = sanitizeIntegrationConfig({
+      id: 1,
+      userId: 1,
+      clientId: 1,
       provider: "kommo",
+      enabled: true,
+      accountDomain: undefined,
+      apiBaseUrl: undefined,
       accessToken: "secret-access",
       refreshToken: "secret-refresh",
       webhookSecret: "secret-webhook",
       webhookToken: "secret-token",
-      enabled: true,
+      userAgent: undefined,
+      environment: undefined,
+      metadata: {},
+      updatedAt: undefined,
     });
 
     expect(sanitized).toMatchObject({
