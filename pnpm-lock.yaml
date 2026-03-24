@@ -12,6 +12,7 @@ overrides:
   lodash-es: 4.17.23
   mdast-util-to-hast: 13.2.1
   dompurify: '>=3.3.2'
+  fast-xml-parser: '>=5.5.7'
 
 patchedDependencies:
   wouter@3.7.1:
