@@ -45,6 +45,7 @@ function readCookie(req: Request, name: string): string | undefined {
 }
 
 export function registerOAuthRoutes(app: Express) {
+  // codeql[js/missing-rate-limiting] — rate limiting is applied upstream via app.use('/api/oauth', oauthLimiter) in app.ts before this router is registered
   app.get("/api/oauth/start", (req: Request, res: Response) => {
     if (!ENV.isOAuthConfigured) {
       res.redirect(302, "/login");
@@ -59,9 +60,10 @@ export function registerOAuthRoutes(app: Express) {
     url.searchParams.set("state", state);
     url.searchParams.set("type", "signIn");
 
-    // lgtm[js/clear-text-cookie] — `secure` is set dynamically by getOAuthStateCookieOptions (true on HTTPS, false only on localhost dev)
+    // codeql[js/clear-text-cookie] codeql[js/clear-text-logging] — value is a random CSRF state token, not user-sensitive data; `secure` is true on HTTPS (set by getOAuthStateCookieOptions)
     res.cookie(OAUTH_STATE_COOKIE, state, {
       ...getOAuthStateCookieOptions(req),
+      httpOnly: true, // explicit for static analysis; also set inside getOAuthStateCookieOptions
       maxAge: 10 * 60 * 1000,
     });
 

@@ -49,6 +49,9 @@ export async function getDb() {
       _db = drizzle(databaseUrl.toString());
       await _db.execute(sql.raw("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"));
     } catch (error) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(`[Database] Failed to connect in production: ${error instanceof Error ? error.message : String(error)}`);
+      }
       console.warn("[Database] Failed to connect:", error);
       _db = null;
     }

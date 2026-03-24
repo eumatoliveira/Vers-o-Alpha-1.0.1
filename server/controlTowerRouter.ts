@@ -640,11 +640,18 @@ export const controlTowerRouter = router({
   syncKommoNow: protectedProcedure
     .input(z.object({ provider: z.enum(["kommo", "asaas"]).default("kommo") }).optional())
     .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
       const provider = input?.provider ?? "kommo";
-      const result =
-        provider === "kommo"
-          ? await kommoFullSyncUseCase({ userId: ctx.user!.id, provider: "kommo" })
-          : await asaasFullSyncUseCase({ userId: ctx.user!.id });
+      let result: { syncedAt: string };
+      try {
+        result =
+          provider === "kommo"
+            ? await kommoFullSyncUseCase({ userId: ctx.user!.id, provider: "kommo" })
+            : await asaasFullSyncUseCase({ userId: ctx.user!.id });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new TRPCError({ code: "BAD_REQUEST", message });
+      }
       const facts = await loadUserFacts(ctx.user!.id);
       const snapshot = enterprise.buildSnapshot(facts);
       return {

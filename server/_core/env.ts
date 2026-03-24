@@ -78,6 +78,10 @@ if (isProduction && !jwtSecret) {
   throw new Error("[ENV] Missing JWT_SECRET in production. Set JWT_SECRET before starting the server.");
 }
 
+if (isProduction && !process.env.DATABASE_URL) {
+  throw new Error("[ENV] Missing DATABASE_URL in production. Set DATABASE_URL before starting the server.");
+}
+
 const developmentSecret = `dev-${randomBytes(24).toString("hex")}`;
 
 export const ENV = {

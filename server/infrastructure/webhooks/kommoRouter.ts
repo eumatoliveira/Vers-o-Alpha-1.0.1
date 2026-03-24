@@ -84,7 +84,7 @@ kommoWebhookRouter.get("/webhook/revoked", async (req, res) => {
 
     params.delete("sign");
     const baseString = params.toString();
-    // lgtm[js/weak-cryptographic-algorithm] — SHA-1 is required by the Kommo webhook spec and cannot be changed
+    // codeql[js/weak-cryptographic-algorithm] — SHA-1 is mandated by the Kommo webhook spec; cannot be changed
     const expectedSignature = createHash("sha1")
       .update(`${baseString}${ENV.kommoClientSecret}`)
       .digest("hex");

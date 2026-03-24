@@ -14,6 +14,7 @@ import { currencyService } from "../domain/currencyService";
 import { exportRouter } from "../exportRouter";
 import { v1Router } from "../publicApi/v1Router";
 import { bootstrapDone } from "../authRouter";
+import { getDb } from "../db";
 
 // ═══════════════════════════════════════════════════════════════
 // Port Discovery
@@ -258,11 +259,14 @@ export async function startServer() {
     console.log(`[Server] Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
+  // Eagerly establish DB connection so startup fails fast if DATABASE_URL is wrong
+  await getDb();
+
   // Wait for user bootstrap to complete before accepting connections
   // so login requests never race against bcrypt hashing of demo users
   await bootstrapDone;
 
   server.listen(port, () => {
-    console.log(`[Server] Running on http://localhost:${port}/`);
+    console.log(`[Server] Listening on port ${port} (${process.env.NODE_ENV ?? "development"})`);
   });
 }

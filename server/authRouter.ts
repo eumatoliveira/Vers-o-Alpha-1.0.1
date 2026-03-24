@@ -87,12 +87,8 @@ const adminProvisionedIntegrationSchema = z.object({
   identifier: optionalTrimmedString(500),
 });
 
-// Initialize admin user on first load
+// Initialize admin user on first load (runs in both dev and production)
 async function initializeAdminUser() {
-  if (!ENV.isDevelopment) {
-    return;
-  }
-
   if (!ENV.bootstrapAdminEmail || !ENV.bootstrapAdminPassword) {
     console.warn("[Auth] Admin bootstrap skipped. Set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD in .env.");
     return;
@@ -111,12 +107,8 @@ async function initializeAdminUser() {
   }
 }
 
-// Ensure configured test users exist when bootstrap variables are set.
+// Ensure configured test users exist when bootstrap variables are set (runs in both dev and production).
 async function ensureTestClientUsers() {
-  if (!ENV.isDevelopment) {
-    return;
-  }
-
   if (BOOTSTRAP_DEMO_CLIENTS.length === 0) {
     console.warn(
       "[Auth] Test user bootstrap skipped. Configure BOOTSTRAP_DEMO_USERS or BOOTSTRAP_TEST_CLIENT_EMAILS/BOOTSTRAP_TEST_CLIENT_PASSWORD in .env."
