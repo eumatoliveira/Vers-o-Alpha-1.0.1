@@ -9,11 +9,10 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
-    "dev:clean": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -match 'glx-partners-landing-main' -and $_.CommandLine -match 'server/_core/index\\\\.ts' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; pnpm dev\"",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "vercel-build": "pnpm build",
-    "start": "cross-env NODE_ENV=production node dist/index.js",
-    "check": "pnpm run check:quality && tsc --noEmit",
+    "vercel-build": "npm run build",
+    "start": "node dist/index.js",
+    "check": "npm run check:quality && tsc --noEmit",
     "check:quality": "tsx scripts/check-content-quality.ts",
     "test:dashboard-api-seed": "tsx scripts/test-dashboard-api-seed.ts",
     "format": "prettier --write .",
@@ -130,23 +129,6 @@
     "vitest": "^2.1.4"
   },
   "engines": {
-    "node": ">=20.0.0 <23.0.0",
-    "pnpm": ">=9.0.0"
-  },
-  "packageManager": "pnpm@10.30.1",
-  "pnpm": {
-    "patchedDependencies": {
-      "wouter@3.7.1": "patches/wouter@3.7.1.patch"
-    },
-    "overrides": {
-      "react-is": "19.2.0",
-      "tailwindcss>nanoid": "3.3.7",
-      "esbuild": "0.25.10",
-      "lodash": "4.17.23",
-      "lodash-es": "4.17.23",
-      "mdast-util-to-hast": "13.2.1",
-      "dompurify": ">=3.3.2",
-      "fast-xml-parser": ">=5.5.7"
-    }
+    "node": ">=20.0.0"
   }
 }
