@@ -381,6 +381,9 @@ Confirme que as variaveis `BOOTSTRAP_*` foram definidas no `.env` e que o backen
 - Configure variaveis de ambiente no provedor (especialmente `JWT_SECRET` e `DATABASE_URL`).
 - Use HTTPS para cookies `SameSite=None` com `secure=true`.
 - Execute `build` no CI e publique o conteudo de `dist/`.
+- Na Vercel, o rewrite deve apontar para `/api` e nao para `/api/index.ts`, senao a home pode exibir JavaScript bruto em vez do app.
+- Antes de publicar na Vercel, rode `pnpm run vercel:preflight` para validar o bundle de producao.
+- Se um dominio da Vercel responder `DEPLOYMENT_NOT_FOUND`, reatribua o alias/dominio ao deploy ativo no painel.
 
 ---
 

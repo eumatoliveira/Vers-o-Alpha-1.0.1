@@ -11,6 +11,7 @@
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
     "dev:clean": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -match 'glx-partners-landing-main' -and $_.CommandLine -match 'server/_core/index\\\\.ts' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; pnpm dev\"",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "vercel:preflight": "pnpm run build",
     "vercel-build": "pnpm build",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "start:prod": "node dist/index.js",
@@ -132,7 +133,7 @@
     "vitest": "^2.1.4"
   },
   "engines": {
-    "node": ">=20.0.0 <23.0.0",
+    "node": "20.x",
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@10.30.1",
