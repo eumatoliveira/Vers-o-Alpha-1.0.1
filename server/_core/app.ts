@@ -102,9 +102,10 @@ function createRateLimiter(opts: {
 // Security Headers Middleware
 // ═══════════════════════════════════════════════════════════════
 
+const BUILDER_FRAME_ANCESTORS = "'self' https://builder.io https://*.builder.io";
+
 function securityHeaders(_req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "0"); // Modern browsers use CSP instead
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
@@ -112,11 +113,17 @@ function securityHeaders(_req: Request, res: Response, next: NextFunction) {
     "camera=(), microphone=(), geolocation=(), payment=()"
   );
 
-  // Strict CSP only in production; dev uses eval for HMR
+  // Builder previews load the app inside an iframe, so we allow builder.io
+  // explicitly via CSP and avoid X-Frame-Options which would block embeds.
   if (process.env.NODE_ENV === "production") {
     res.setHeader(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://wa.me; frame-ancestors 'none';"
+      `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://wa.me; frame-ancestors ${BUILDER_FRAME_ANCESTORS};`
+    );
+  } else {
+    res.setHeader(
+      "Content-Security-Policy",
+      `default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: http: ws: wss:; frame-ancestors ${BUILDER_FRAME_ANCESTORS};`
     );
   }
 
