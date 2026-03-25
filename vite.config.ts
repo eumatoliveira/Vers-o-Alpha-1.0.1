@@ -18,44 +18,6 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          const normalized = id.replace(/\\/g, "/");
-
-          // Page-level code splitting
-          if (normalized.includes("/client/src/pages/admin/")) return "admin-pages";
-          if (normalized.includes("/client/src/pages/client/")) return "client-pages";
-          if (
-            normalized.includes("/client/src/pages/Dashboard.tsx") ||
-            normalized.includes("/client/src/features/control-tower/")
-          ) {
-            return "dashboard-control-tower";
-          }
-          if (
-            normalized.includes("/client/src/pages/Home.tsx") ||
-            normalized.includes("/client/src/components/Hero.tsx") ||
-            normalized.includes("/client/src/components/InsightsSection.tsx")
-          ) {
-            return "landing-core";
-          }
-
-          // Vendor splitting for optimal caching
-          if (normalized.includes("framer-motion")) return "vendor-motion";
-          if (
-            normalized.includes("react-chartjs-2") ||
-            normalized.includes("chart.js") ||
-            normalized.includes("recharts")
-          ) {
-            return "vendor-charts";
-          }
-          if (normalized.includes("@radix-ui")) return "vendor-radix";
-          if (normalized.includes("node_modules")) return "vendor";
-
-          return undefined;
-        },
-      },
-    },
   },
   server: {
     host: true,
