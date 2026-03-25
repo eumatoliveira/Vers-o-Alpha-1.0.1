@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
 function parseMoney(value: string) {
   const normalized = value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
@@ -37,6 +38,12 @@ function formatCompactCurrency(value: number) {
   }
 
   return `R$ ${Math.round(value)}`;
+}
+
+function toNumber(value: ValueType | undefined) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number.parseFloat(value) || 0;
+  return 0;
 }
 
 function ChartCard({
@@ -155,7 +162,7 @@ export function OperationsChartsPanel({
               <CartesianGrid stroke="#edf2f7" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number) => formatCompactCurrency(value)} />
+              <Tooltip formatter={(value: ValueType | undefined) => formatCompactCurrency(toNumber(value))} />
               <Legend />
               <Bar dataKey="value" name="Valor atual" radius={[8, 8, 0, 0]}>
                 {revenueData.map((entry) => (
@@ -204,7 +211,7 @@ export function OperationsChartsPanel({
               <CartesianGrid stroke="#edf2f7" horizontal={false} />
               <XAxis type="number" tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" width={86} tick={{ fill: "#526070", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number, _name, item) => item?.payload?.name === "Receita/h" ? `R$ ${Math.round(value)}/h` : formatCompactCurrency(value)} />
+              <Tooltip formatter={(value: ValueType | undefined, _name: NameType | undefined, item) => item?.payload?.name === "Receita/h" ? `R$ ${Math.round(toNumber(value))}/h` : formatCompactCurrency(toNumber(value))} />
               <Legend />
               <Bar dataKey="value" name="Valor atual" radius={[0, 8, 8, 0]}>
                 {financeData.map((entry) => (
@@ -230,7 +237,7 @@ export function OperationsChartsPanel({
               <CartesianGrid stroke="#edf2f7" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number, _name, item) => item?.payload?.name === "Capacidade" ? `${Math.round(value)}%` : `${(value / 15).toFixed(1)} h`} />
+              <Tooltip formatter={(value: ValueType | undefined, _name: NameType | undefined, item) => item?.payload?.name === "Capacidade" ? `${Math.round(toNumber(value))}%` : `${(toNumber(value) / 15).toFixed(1)} h`} />
               <Legend />
               <Area type="monotone" dataKey="value" name="Pressão operacional" stroke="#ff7a1a" fill="#ffedd5" strokeWidth={3} />
             </AreaChart>

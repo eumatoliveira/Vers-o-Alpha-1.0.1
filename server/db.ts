@@ -1,5 +1,5 @@
 import { eq, desc, sql, and, gte, lte, count, inArray } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
   users, 
@@ -22,15 +22,20 @@ import {
   manualEntries,
   InsertManualEntry
 } from "../drizzle/schema";
+import * as schema from "../drizzle/schema";
 import { ENV } from './_core/env';
 import type { IntegrationConfigRecord, IntegrationProvider, IntegrationPipelineSnapshot } from "@shared/integrationEvents";
 import type { SupportedCurrency } from "@shared/currency";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type Database = MySql2Database<typeof schema> & {
+  $client: ReturnType<typeof drizzle<typeof schema>>["$client"];
+};
+
+let _db: Database | null = null;
 
 // Named synchronous export used by routers (aiChatRouter, costTracker, etc).
 // Operations throw at runtime when DATABASE_URL is not configured.
-export const db: ReturnType<typeof drizzle> = new Proxy({} as ReturnType<typeof drizzle>, {
+export const db: Database = new Proxy({} as Database, {
   get(_target: never, prop: string | symbol) {
     if (_db) return (_db as any)[prop];
     throw new Error(`[Database] No connection available. Configure DATABASE_URL to enable database features. (db.${String(prop)})`);
@@ -46,7 +51,7 @@ export async function getDb() {
         databaseUrl.searchParams.set("charset", "utf8mb4");
       }
 
-      _db = drizzle(databaseUrl.toString());
+      _db = drizzle(databaseUrl.toString(), { schema, mode: "default" });
       await _db.execute(sql.raw("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"));
     } catch (error) {
       if (process.env.NODE_ENV === "production") {

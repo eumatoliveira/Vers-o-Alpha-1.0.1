@@ -175,7 +175,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
-  const theme: "light" | "dark" = "light";
+  const [theme, setTheme] = useState<ThemeContextType["theme"]>("light");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || "GLX Admin");
   const [profileEmail, setProfileEmail] = useState(user?.email || "admin@glx.local");
@@ -198,7 +198,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     })
     .slice(0, 5);
 
-  const toggleTheme = () => {};
+  const toggleTheme = () => {
+    setTheme((current) => (current === "light" ? "dark" : "light"));
+  };
 
   const handleLogout = async () => {
     await logout({ redirectTo: "/" });

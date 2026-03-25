@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, Legend, ScatterChart, Scatter, ZAxis, Cell, PieChart, Pie,
 } from 'recharts';
+import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import type { Appointment, Filters } from '../../data/mockData';
 import type { KPISummary } from '../../data/dashboardTypes';
 
@@ -22,6 +23,7 @@ const GR = { stroke:'var(--chart-grid,#e5e7eb)', strokeOpacity:0.5, strokeDashar
 
 function fmtK(v: number) { return v >= 1000 ? `R$${(v/1000).toFixed(1)}k` : `R$${v.toFixed(0)}`; }
 function fmtPct(v: number) { return `${v.toFixed(1)}%`; }
+function toTooltipNumber(v: ValueType | undefined) { return typeof v === 'number' ? v : typeof v === 'string' ? Number(v) || 0 : 0; }
 
 function PriorityBadge({ priority }: { priority: 'P1'|'P2'|'P3'|'OK' }) {
   const cls = priority === 'P3' ? 'red' : priority === 'P2' ? 'yellow' : 'green';
@@ -300,7 +302,7 @@ export function OperacaoUXModule({ opsWeeks, filtered, kpis, byProf, showTargets
             <CartesianGrid {...GR} />
             <XAxis dataKey="range" tick={TK} />
             <YAxis tick={TK} unit="%" />
-            <Tooltip {...TS} formatter={(v: any, name: string) => [
+            <Tooltip {...TS} formatter={(v: ValueType | undefined, name: NameType | undefined) => [
               `${(v as number).toFixed(1)}%`, name === 'pct' ? 'Leads respondidos' : 'Tendência',
             ]} />
             <ReferenceLine x="1-2h" stroke={C.green} strokeDasharray="5 3" strokeWidth={1.5} label={{ value:'P1 <1h', position:'insideTopRight', fill:C.green, fontSize:10 }} />

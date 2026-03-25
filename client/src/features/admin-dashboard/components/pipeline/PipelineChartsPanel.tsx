@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
 function parseMoney(value: string) {
   const normalized = value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
@@ -37,6 +38,12 @@ function formatCompactCurrency(value: number) {
   }
 
   return `R$ ${Math.round(value)}`;
+}
+
+function toNumber(value: ValueType | undefined) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number.parseFloat(value) || 0;
+  return 0;
 }
 
 function ChartCard({
@@ -158,7 +165,7 @@ export function PipelineChartsPanel({
               <CartesianGrid stroke="#edf2f7" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number) => `${Math.round(value)}`} />
+              <Tooltip formatter={(value: ValueType | undefined) => `${Math.round(toNumber(value))}`} />
               <Legend />
               <Bar dataKey="value" name="Volume atual" radius={[8, 8, 0, 0]}>
                 {topFunnelData.map((entry) => (
@@ -183,7 +190,10 @@ export function PipelineChartsPanel({
               <CartesianGrid stroke="#edf2f7" vertical={false} />
               <XAxis dataKey="stage" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number, name) => (name === "Meta" ? `${Math.round(value)}` : `${Math.round(value)}${name === "Atual" && value < 100 ? "%" : ""}`)} />
+              <Tooltip formatter={(value: ValueType | undefined, name: NameType | undefined) => {
+                const numericValue = toNumber(value);
+                return name === "Meta" ? `${Math.round(numericValue)}` : `${Math.round(numericValue)}${name === "Atual" && numericValue < 100 ? "%" : ""}`;
+              }} />
               <Legend />
               <Bar dataKey="taxa" name="Atual" fill="#ff7a1a" radius={[8, 8, 0, 0]} />
               <Line type="monotone" dataKey="meta" name="Meta" stroke="#22c55e" strokeWidth={3} dot={{ r: 4 }} />
@@ -205,7 +215,10 @@ export function PipelineChartsPanel({
               <CartesianGrid stroke="#edf2f7" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number) => `${Math.round(value)}${value <= 100 ? "%" : ""}`} />
+              <Tooltip formatter={(value: ValueType | undefined) => {
+                const numericValue = toNumber(value);
+                return `${Math.round(numericValue)}${numericValue <= 100 ? "%" : ""}`;
+              }} />
               <Legend />
               <Area type="monotone" dataKey="atual" name="Atual" stroke="#ff7a1a" fill="#ffedd5" strokeWidth={3} />
               <Line type="monotone" dataKey="meta" name="Meta" stroke="#0f172a" strokeWidth={2} dot={{ r: 3 }} />
@@ -227,7 +240,7 @@ export function PipelineChartsPanel({
               <CartesianGrid stroke="#edf2f7" horizontal={false} />
               <XAxis type="number" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" width={94} tick={{ fill: "#526070", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number, _name, item) => item?.payload?.name === "Renovacao %" ? `${Math.round(value)}%` : `${Math.round(value)}`} />
+              <Tooltip formatter={(value: ValueType | undefined, _name: NameType | undefined, item) => item?.payload?.name === "Renovacao %" ? `${Math.round(toNumber(value))}%` : `${Math.round(toNumber(value))}`} />
               <Legend />
               <Bar dataKey="value" name="Valor atual" radius={[0, 8, 8, 0]}>
                 {advisoryData.map((entry) => (

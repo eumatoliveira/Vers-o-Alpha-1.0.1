@@ -7,7 +7,7 @@ describe("CurrencyService", () => {
     const provider: ExchangeRateProvider = {
       providerName: "test",
       fetchLatest: vi.fn(async () => ({
-        base: "BRL",
+        base: "BRL" as const,
         fetchedAt: "2026-03-06T12:00:00.000Z",
         rates: { USD: 0.2, ARS: 210 },
       })),
@@ -27,7 +27,7 @@ describe("CurrencyService", () => {
       providerName: "test",
       fetchLatest: vi.fn()
         .mockResolvedValueOnce({
-          base: "BRL",
+          base: "BRL" as const,
           fetchedAt: "2026-03-06T12:00:00.000Z",
           rates: { USD: 0.2 },
         })
@@ -52,12 +52,13 @@ describe("CurrencyService", () => {
     const service = new CurrencyService(provider, 60_000);
     const converted = service.convertFromBase(1500, "USD", {
       base: "BRL",
-      rates: {
-        BRL: 1,
-        USD: Number.NaN,
-        ARS: Number.NaN,
-        CLP: Number.NaN,
-        COP: Number.NaN,
+        rates: {
+          BRL: 1,
+          USD: Number.NaN,
+          EUR: Number.NaN,
+          ARS: Number.NaN,
+          CLP: Number.NaN,
+          COP: Number.NaN,
         MXN: Number.NaN,
         PEN: Number.NaN,
         UYU: Number.NaN,

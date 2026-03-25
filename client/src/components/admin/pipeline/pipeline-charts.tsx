@@ -18,6 +18,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { DashboardViewDefinition } from "@/features/admin-dashboard/types";
 import { useAdminDashboardStore } from "@/features/admin-dashboard/store/useAdminDashboardStore";
 
@@ -56,6 +57,31 @@ function formatCompactCurrency(value: number) {
   }
 
   return `R$ ${Math.round(value)}`;
+}
+
+type FunnelPoint = { etapa: string; valor: number; color: string };
+type WeightedPoint = { semana: string; pipeline: number; meta: number; acv: number };
+type CyclePoint = { produto: string; dias: number; color: string };
+type OsVsAdvisoryPoint = { eixo: string; atual: number; meta: number };
+
+function tooltipNumber(value: ValueType | undefined) {
+  return toNumber(value);
+}
+
+function funnelStage(entry: unknown) {
+  return String((entry as FunnelPoint | undefined)?.etapa ?? "");
+}
+
+function weightedWeek(entry: unknown) {
+  return String((entry as WeightedPoint | undefined)?.semana ?? "");
+}
+
+function cycleProduct(entry: unknown) {
+  return String((entry as CyclePoint | undefined)?.produto ?? "");
+}
+
+function advisoryAxis(entry: unknown) {
+  return String((entry as OsVsAdvisoryPoint | undefined)?.eixo ?? "");
 }
 
 function ChartCard({
@@ -162,7 +188,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
               <XAxis dataKey="etapa" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
-              <Tooltip formatter={(value) => [`${Math.round(toNumber(value))}`, "Volume"]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [`${Math.round(tooltipNumber(value))}`, "Volume"]} />
               <Legend />
               <Bar
                 isAnimationActive
@@ -172,7 +198,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
                 name="Volume atual"
                 radius={[8, 8, 0, 0]}
                 onClick={(entry) => {
-                  const etapa = String(entry?.etapa ?? "");
+                  const etapa = funnelStage(entry);
                   const stageMap: Record<string, string> = {
                     Leads: "Lead",
                     "Leads quentes": "Lead Quente",
@@ -221,7 +247,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
                 tick={{ fill: "#64748b", fontSize: 12 }}
                 tickFormatter={(value) => `${Math.round(toNumber(value) / 1000)}k`}
               />
-              <Tooltip formatter={(value, name) => [formatCompactCurrency(toNumber(value)), name === "pipeline" ? "Pipeline" : "Referencia"]} />
+              <Tooltip formatter={(value: ValueType | undefined, name: NameType | undefined) => [formatCompactCurrency(tooltipNumber(value)), name === "pipeline" ? "Pipeline" : "Referencia"]} />
               <Legend />
               <ReferenceLine y={targetMrr * 3} stroke="#10b981" strokeDasharray="4 4" label="Meta 3x" />
               <Area
@@ -234,7 +260,10 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
                 stroke="#2563eb"
                 fill="url(#pipelineFill)"
                 strokeWidth={3}
-                onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.semana ?? "Atual"), label: `Semana ${String(entry?.semana ?? "Atual")}` })}
+                onClick={(entry) => {
+                  const semana = weightedWeek(entry) || "Atual";
+                  setChartFilter({ dimension: "month", value: semana, label: `Semana ${semana}` });
+                }}
               />
               <Line
                 isAnimationActive
@@ -263,7 +292,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
         >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Tooltip formatter={(value) => [`${Math.round(toNumber(value))}`, "Leads"]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [`${Math.round(tooltipNumber(value))}`, "Leads"]} />
               <Legend />
               <Pie
                 isAnimationActive
@@ -307,7 +336,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
               <XAxis dataKey="etapa" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} domain={[0, 100]} />
-              <Tooltip formatter={(value) => [`${Math.round(toNumber(value))}%`, "Taxa"]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [`${Math.round(tooltipNumber(value))}%`, "Taxa"]} />
               <Legend />
               <Bar
                 isAnimationActive
@@ -321,12 +350,12 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
                   setChartFilter({
                     dimension: "stage",
                     value:
-                      String(entry?.etapa ?? "").includes("Fech.")
+                      funnelStage(entry).includes("Fech.")
                         ? "Proposta enviada"
-                        : String(entry?.etapa ?? "").includes("Qualif.")
+                        : funnelStage(entry).includes("Qualif.")
                           ? "Call Fechamento"
                           : "Call Qualificacao",
-                    label: `Conversao ${String(entry?.etapa ?? "")}`,
+                    label: `Conversao ${funnelStage(entry)}`,
                   })
                 }
               />
@@ -346,7 +375,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
               <XAxis dataKey="produto" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
-              <Tooltip formatter={(value) => [`${Math.round(toNumber(value))} dias`, "Ciclo"]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [`${Math.round(tooltipNumber(value))} dias`, "Ciclo"]} />
               <Legend />
               <Bar
                 isAnimationActive
@@ -356,7 +385,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
                 name="Dias"
                 radius={[8, 8, 0, 0]}
                 onClick={(entry) => {
-                  const produto = String(entry?.produto ?? "").toUpperCase() === "ADVISORY" ? "ADVISORY" : "OS";
+                  const produto = cycleProduct(entry).toUpperCase() === "ADVISORY" ? "ADVISORY" : "OS";
                   setProduct(produto as "OS" | "ADVISORY");
                   setChartFilter({ dimension: "product", value: produto, label: `Produto ${produto}` });
                 }}
@@ -380,7 +409,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
               <XAxis dataKey="eixo" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
-              <Tooltip formatter={(value, _name, item) => [`${Math.round(toNumber(value))}${item?.dataKey === "atual" ? "%" : ""}`, item?.dataKey === "meta" ? "Meta" : "Atual"]} />
+              <Tooltip formatter={(value: ValueType | undefined, _name: NameType | undefined, item) => [`${Math.round(tooltipNumber(value))}${item?.dataKey === "atual" ? "%" : ""}`, item?.dataKey === "meta" ? "Meta" : "Atual"]} />
               <Legend />
               <Bar
                 isAnimationActive
@@ -391,7 +420,7 @@ export function PipelineChartsGrid({ view }: { view: DashboardViewDefinition }) 
                 fill="#14b8a6"
                 radius={[8, 8, 0, 0]}
                 onClick={(entry) => {
-                  const eixo = String(entry?.eixo ?? "");
+                  const eixo = advisoryAxis(entry);
                   if (eixo.includes("Advisory")) {
                     setProduct("ADVISORY");
                     setChartFilter({ dimension: "product", value: "ADVISORY", label: "Produto ADVISORY" });

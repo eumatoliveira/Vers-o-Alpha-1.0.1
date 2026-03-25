@@ -18,6 +18,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { ChartContainer, type ChartConfig as UiChartConfig } from "@/components/ui/chart";
 import { useAdminDashboardStore } from "@/features/admin-dashboard/store/useAdminDashboardStore";
 
@@ -37,6 +38,47 @@ type OperacaoChartsProps = {
   capacidadeAtual: number;
   slaAtual: number;
   npsAtual: number;
+};
+
+type MonthPoint = {
+  mes: string;
+};
+
+type RevenuePoint = MonthPoint & {
+  mrr: number;
+  forecast: number;
+};
+
+type GrowthPoint = MonthPoint & {
+  crescimento: number;
+};
+
+type NewVsChurnPoint = MonthPoint & {
+  newMRR: number;
+  churnMRR: number;
+};
+
+type RevenueCompositionPoint = MonthPoint & {
+  mrr: number;
+  setup: number;
+  advisory: number;
+  oneTime: number;
+};
+
+type MarginPoint = MonthPoint & {
+  margem: number;
+};
+
+type HealthPoint = {
+  cliente: string;
+  health: number;
+  nps: number;
+};
+
+type CapacityPoint = {
+  semana: string;
+  capacidade: number;
+  sla: number;
 };
 
 function ChartCard({ title, subtitle, children, height = 280 }: ChartCardProps) {
@@ -60,6 +102,24 @@ function ChartCard({ title, subtitle, children, height = 280 }: ChartCardProps) 
 
 function currency(value: number) {
   return `R$ ${value.toLocaleString("pt-BR")}`;
+}
+
+function toNumber(value: ValueType | undefined) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value) || 0;
+  return 0;
+}
+
+function monthLabel(entry: unknown) {
+  return String((entry as MonthPoint | undefined)?.mes ?? "");
+}
+
+function clientLabel(entry: unknown) {
+  return String((entry as HealthPoint | undefined)?.cliente ?? "");
+}
+
+function weekLabel(entry: unknown) {
+  return String((entry as CapacityPoint | undefined)?.semana ?? "");
 }
 
 const mrrChartConfig = {
@@ -184,7 +244,7 @@ export function OperacaoChartsGrid({
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="mes" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
-              <Tooltip formatter={(value: number) => [currency(value), ""]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [currency(toNumber(value)), ""]} />
               <Area
                 isAnimationActive
                 animationDuration={250}
@@ -194,7 +254,10 @@ export function OperacaoChartsGrid({
                 stroke="#f97316"
                 fill="url(#mrrFill)"
                 strokeWidth={3}
-                onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Mes ${String(entry?.mes ?? "")}` })}
+                onClick={(entry) => {
+                  const mes = monthLabel(entry);
+                  setChartFilter({ dimension: "month", value: mes, label: `Mes ${mes}` });
+                }}
               />
               <Line isAnimationActive animationDuration={250} animationEasing="ease-out" type="monotone" dataKey="forecast" stroke="#94a3b8" strokeDasharray="5 5" dot={false} strokeWidth={2} />
             </AreaChart>
@@ -207,7 +270,7 @@ export function OperacaoChartsGrid({
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="mes" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} domain={[0, 20]} />
-              <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, "Crescimento"]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [`${toNumber(value).toFixed(1)}%`, "Crescimento"]} />
               <ReferenceLine y={15} stroke="#10b981" strokeDasharray="4 4" label="Meta 15%" />
               <Line
                 isAnimationActive
@@ -219,7 +282,10 @@ export function OperacaoChartsGrid({
                 strokeWidth={3}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
-                onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Mes ${String(entry?.mes ?? "")}` })}
+                onClick={(entry) => {
+                  const mes = monthLabel(entry);
+                  setChartFilter({ dimension: "month", value: mes, label: `Mes ${mes}` });
+                }}
               />
             </LineChart>
           </ChartContainer>
@@ -233,7 +299,7 @@ export function OperacaoChartsGrid({
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="mes" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
-              <Tooltip formatter={(value: number) => [currency(value), ""]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [currency(toNumber(value)), ""]} />
               <Bar
                 isAnimationActive
                 animationDuration={250}
@@ -242,7 +308,10 @@ export function OperacaoChartsGrid({
                 name="New MRR"
                 fill="#10b981"
                 radius={[8, 8, 0, 0]}
-                onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `New MRR ${String(entry?.mes ?? "")}` })}
+                onClick={(entry) => {
+                  const mes = monthLabel(entry);
+                  setChartFilter({ dimension: "month", value: mes, label: `New MRR ${mes}` });
+                }}
               />
               <Bar
                 isAnimationActive
@@ -253,7 +322,10 @@ export function OperacaoChartsGrid({
                 name="Churn MRR"
                 fill="#f97316"
                 radius={[8, 8, 0, 0]}
-                onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Churn MRR ${String(entry?.mes ?? "")}` })}
+                onClick={(entry) => {
+                  const mes = monthLabel(entry);
+                  setChartFilter({ dimension: "month", value: mes, label: `Churn MRR ${mes}` });
+                }}
               />
             </BarChart>
           </ChartContainer>
@@ -265,11 +337,11 @@ export function OperacaoChartsGrid({
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="mes" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
-              <Tooltip formatter={(value: number) => [currency(value), ""]} />
-              <Bar isAnimationActive animationDuration={250} animationEasing="ease-out" dataKey="mrr" stackId="a" fill="#0f172a" radius={[6, 6, 0, 0]} onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Receita ${String(entry?.mes ?? "")}` })} />
-              <Bar isAnimationActive animationDuration={250}  animationEasing="ease-out" dataKey="setup" stackId="a" fill="#f97316" onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Setup ${String(entry?.mes ?? "")}` })} />
-              <Bar isAnimationActive animationDuration={250}  animationEasing="ease-out" dataKey="advisory" stackId="a" fill="#38bdf8" onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Advisory ${String(entry?.mes ?? "")}` })} />
-              <Bar isAnimationActive animationDuration={250}  animationEasing="ease-out" dataKey="oneTime" stackId="a" fill="#cbd5e1" onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `One-time ${String(entry?.mes ?? "")}` })} />
+              <Tooltip formatter={(value: ValueType | undefined) => [currency(toNumber(value)), ""]} />
+              <Bar isAnimationActive animationDuration={250} animationEasing="ease-out" dataKey="mrr" stackId="a" fill="#0f172a" radius={[6, 6, 0, 0]} onClick={(entry) => { const mes = monthLabel(entry); setChartFilter({ dimension: "month", value: mes, label: `Receita ${mes}` }); }} />
+              <Bar isAnimationActive animationDuration={250}  animationEasing="ease-out" dataKey="setup" stackId="a" fill="#f97316" onClick={(entry) => { const mes = monthLabel(entry); setChartFilter({ dimension: "month", value: mes, label: `Setup ${mes}` }); }} />
+              <Bar isAnimationActive animationDuration={250}  animationEasing="ease-out" dataKey="advisory" stackId="a" fill="#38bdf8" onClick={(entry) => { const mes = monthLabel(entry); setChartFilter({ dimension: "month", value: mes, label: `Advisory ${mes}` }); }} />
+              <Bar isAnimationActive animationDuration={250}  animationEasing="ease-out" dataKey="oneTime" stackId="a" fill="#cbd5e1" onClick={(entry) => { const mes = monthLabel(entry); setChartFilter({ dimension: "month", value: mes, label: `One-time ${mes}` }); }} />
             </BarChart>
           </ChartContainer>
         </ChartCard>
@@ -280,7 +352,7 @@ export function OperacaoChartsGrid({
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="mes" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} domain={[0, 50]} />
-              <Tooltip formatter={(value: number) => [`${value}%`, "Margem"]} />
+              <Tooltip formatter={(value: ValueType | undefined) => [`${toNumber(value)}%`, "Margem"]} />
               <ReferenceLine y={35} stroke="#10b981" strokeDasharray="4 4" label="Meta 35%" />
               <Line
                 isAnimationActive
@@ -292,7 +364,10 @@ export function OperacaoChartsGrid({
                 strokeWidth={3}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
-                onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.mes ?? ""), label: `Margem ${String(entry?.mes ?? "")}` })}
+                onClick={(entry) => {
+                  const mes = monthLabel(entry);
+                  setChartFilter({ dimension: "month", value: mes, label: `Margem ${mes}` });
+                }}
               />
             </LineChart>
           </ChartContainer>
@@ -330,14 +405,17 @@ export function OperacaoChartsGrid({
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" domain={[0, 10]} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="cliente" tickLine={false} axisLine={false} width={72} />
-                <Tooltip formatter={(value: number) => [value, "Health Score"]} />
+                <Tooltip formatter={(value: ValueType | undefined) => [toNumber(value), "Health Score"]} />
                 <Bar
                   isAnimationActive
                   animationDuration={250}
                   animationEasing="ease-out"
                   dataKey="health"
                   radius={[0, 8, 8, 0]}
-                  onClick={(entry) => setChartFilter({ dimension: "client", value: String(entry?.cliente ?? ""), label: `Cliente ${String(entry?.cliente ?? "")}` })}
+                  onClick={(entry) => {
+                    const cliente = clientLabel(entry);
+                    setChartFilter({ dimension: "client", value: cliente, label: `Cliente ${cliente}` });
+                  }}
                 >
                   {healthScoreData.map((entry, index) => (
                     <Cell
@@ -381,7 +459,7 @@ export function OperacaoChartsGrid({
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="semana" tickLine={false} axisLine={false} />
                 <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} domain={[0, 6]} />
-                <Tooltip formatter={(value: number, name) => [name === "sla" ? `${value.toFixed(1)}h` : `${value}%`, ""]} />
+                <Tooltip formatter={(value: ValueType | undefined, name: NameType | undefined) => [name === "sla" ? `${toNumber(value).toFixed(1)}h` : `${toNumber(value)}%`, ""]} />
                 <Line
                   isAnimationActive
                   animationDuration={250}
@@ -394,7 +472,10 @@ export function OperacaoChartsGrid({
                   strokeWidth={3}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
-                  onClick={(entry) => setChartFilter({ dimension: "month", value: String(entry?.semana ?? ""), label: `SLA ${String(entry?.semana ?? "")}` })}
+                  onClick={(entry) => {
+                    const semana = weekLabel(entry);
+                    setChartFilter({ dimension: "month", value: semana, label: `SLA ${semana}` });
+                  }}
                 />
               </ComposedChart>
             </ChartContainer>
