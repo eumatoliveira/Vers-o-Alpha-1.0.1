@@ -1258,17 +1258,6 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                             A
                           </div>
                         )}
-                        {message.role === 'user' && (
-                          dashProfile.avatar ? (
-                            <img src={dashProfile.avatar} alt={dashProfile.name}
-                              style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                          ) : (
-                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: DARK.accent, flexShrink: 0,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 700 }}>
-                              {dashProfile.name.charAt(0).toUpperCase()}
-                            </div>
-                          )
-                        )}
                         <div
                           style={{
                             borderRadius: 16,
