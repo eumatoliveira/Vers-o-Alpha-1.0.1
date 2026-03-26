@@ -1232,6 +1232,12 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                       position: 'relative',
                     }}
                   >
+                    <style>{`
+                      @keyframes glx-dot-bounce {
+                        0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+                        40% { transform: translateY(-5px); opacity: 1; }
+                      }
+                    `}</style>
                     {activeConversation?.messages.map((message) => (
                       <div
                         key={message.id}
@@ -1244,6 +1250,14 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                           maxWidth: '86%',
                         }}
                       >
+                        {message.role === 'assistant' && (
+                          <div style={{
+                            width: 22, height: 22, borderRadius: '50%', background: DARK.accent, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 700,
+                          }}>
+                            A
+                          </div>
+                        )}
                         {message.role === 'user' && (
                           dashProfile.avatar ? (
                             <img src={dashProfile.avatar} alt={dashProfile.name}
@@ -1302,6 +1316,17 @@ Responda sempre com base no contexto do projeto, seja objetivo e prático.`;
                               Falar com a GLX no WhatsApp
                             </a>
                           </div>
+                        ) : message.role === 'assistant' && message.content === '...' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
+                            {[0, 0.18, 0.36].map((delay, i) => (
+                              <span key={i} style={{
+                                width: 7, height: 7, borderRadius: '50%',
+                                background: DARK.muted,
+                                display: 'inline-block',
+                                animation: `glx-dot-bounce 1.1s ease-in-out ${delay}s infinite`,
+                              }} />
+                            ))}
+                          </span>
                         ) : (
                           message.role === 'assistant' ? stripMarkdown(message.content) : message.content
                         )}

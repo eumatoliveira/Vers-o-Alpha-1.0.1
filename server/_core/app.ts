@@ -145,7 +145,9 @@ function csrfProtection(req: Request, res: Response, next: NextFunction) {
 
   const origin = req.headers.origin;
   const referer = req.headers.referer;
-  const host = req.headers.host;
+  // x-forwarded-host is set by Vercel and other reverse proxies with the real hostname
+  const host = (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0].trim()
+    || req.headers.host;
 
   const sameOrigin = (value: string | undefined) => {
     if (!value || !host) return false;
@@ -161,8 +163,9 @@ function csrfProtection(req: Request, res: Response, next: NextFunction) {
     return;
   }
 
+  // tRPC-compatible error format so the client can parse it properly
   res.status(403).json({
-    error: "CSRF validation failed",
+    error: [{ error: { message: "CSRF validation failed", code: -32600 } }],
   });
 }
 
