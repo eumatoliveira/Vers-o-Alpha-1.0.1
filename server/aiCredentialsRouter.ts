@@ -21,7 +21,7 @@ export const aiCredentialsRouter = router({
     .query(async ({ ctx, input }) => {
       const config = await db.getProviderIntegrationConfig(ctx.user.id, input.provider);
       const fallbackToken = providerEnvToken[input.provider] ?? "";
-      const accessToken = config?.accessToken?.trim() || fallbackToken;
+      const accessToken = fallbackToken || config?.accessToken?.trim() || "";
       return {
         provider: input.provider,
         accessToken,
